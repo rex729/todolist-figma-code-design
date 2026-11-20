@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "PingFang TC", sans-serif;
+      background: #0B0F17;
+      color: #F9FAFB;
+      padding: 16px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .header { margin-bottom: 14px; }
+    .title { font-size: 15px; font-weight: 700; color: #F9FAFB; }
+    .subtitle { font-size: 11px; color: #9CA3AF; margin-top: 2px; }
+    .btn {
+      width: 100%;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: opacity 0.15s ease, transform 0.05s ease;
+    }
+    .btn:active { transform: scale(0.99); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary {
+      background: #0066FF;
+      color: #FFFFFF;
+      margin-bottom: 12px;
+      padding: 12px 14px;
+    }
+    .btn-primary:hover:not(:disabled) { background: #1D75FF; }
+    .btn-secondary {
+      background: #151C28;
+      color: #E5E7EB;
+      border: 1px solid #2E3A4E;
+      margin-bottom: 8px;
+      text-align: left;
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: #1E2736;
+      border-color: #3385FF;
+    }
+    .tag { font-size: 11px; font-weight: 500; color: #9CA3AF; }
+    .btn-primary .tag { color: #DBEAFE; }
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #6B7280;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin: 10px 0 6px;
+    }
+    .log-box {
+      margin-top: 10px;
+      background: #151C28;
+      border: 1px solid #2E3A4E;
+      border-radius: 8px;
+      padding: 10px;
+      min-height: 88px;
+      max-height: 120px;
+      overflow-y: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      color: #9CA3AF;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .log-ok { color: #34D399; }
+    .log-err { color: #F87171; }
+    .log-info { color: #60A5FA; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">TodoList FigmaDesigner</div>
+    <div class="subtitle">Design-as-Code Full Rebuild &amp; Single-Screen Redraw</div>
+  </div>
+
+  <button class="btn btn-primary" data-action="all">
+    <span>🚀 Rebuild All</span>
+    <span class="tag">Foundations ➔ Components ➔ Screens</span>
+  </button>
+
+  <div class="section-label">Foundations &amp; Shared Components</div>
+
+  <button class="btn btn-secondary" data-action="foundations">
+    <span>Foundations</span>
+    <span class="tag">foundations.js</span>
+  </button>
+
+  <button class="btn btn-secondary" data-action="components">
+    <span>Components</span>
+    <span class="tag">components.js</span>
+  </button>
+
+  <div class="section-label">Single Screen Rebuild (screens/*.js)</div>
+
+  <button class="btn btn-secondary" data-action="screen:login">
+    <span>Screen: Login</span>
+    <span class="tag">screens/login.js</span>
+  </button>
+  <button class="btn btn-secondary" data-action="screen:main">
+    <span>Screen: Main</span>
+    <span class="tag">screens/main.js</span>
+  </button>
+
+  <div id="log" class="log-box">
+    <div>Ready. Choose &quot;Rebuild All&quot; or redraw an individual screen.</div>
+    <div class="log-info">🕒 code.js built at: 2026-11-20 22:57:43</div>
+  </div>
+
+  <script>
+    const buttons = Array.from(document.querySelectorAll('button[data-action]'));
+    const logEl = document.getElementById('log');
+
+    function setBusy(busy) {
+      buttons.forEach(b => { b.disabled = busy; });
+    }
+
+    function appendLog(text, cls) {
+      const line = document.createElement('div');
+      if (cls) line.className = cls;
+      line.textContent = text;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        logEl.innerHTML = '';
+        appendLog('⏳ Running [' + action + ']...', 'log-info');
+        setBusy(true);
+        parent.postMessage({ pluginMessage: { type: 'run', target: action } }, '*');
+      });
+    });
+
+    window.onmessage = (event) => {
+      const msg = event.data && event.data.pluginMessage;
+      if (!msg) return;
+      if (msg.type === 'log') {
+        appendLog(msg.message, 'log-ok');
+      } else if (msg.type === 'done') {
+        appendLog('🎉 Done! (' + msg.elapsedMs + ' ms)', 'log-ok');
+        setBusy(false);
+      } else if (msg.type === 'error') {
+        appendLog('❌ Error: ' + msg.message, 'log-err');
+        setBusy(false);
+      }
+    };
+  </script>
+</body>
+</html>

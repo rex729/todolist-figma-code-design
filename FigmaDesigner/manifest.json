@@ -1,0 +1,12 @@
+{
+  "name": "TodoList FigmaDesigner",
+  "id": "todolist-figma-designer-local",
+  "api": "1.0.0",
+  "main": "plugin/code.js",
+  "ui": "plugin/ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["none"]
+  }
+}

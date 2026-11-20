@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "project": "MCPTest",
+  "description": "跨平台（iOS / Android / Flutter）開發環境與 CI/CD Toolchain 版本唯一真理來源 (SSOT)，依據目前本機實測環境建立",
+  "toolchain": {
+    "macos": {
+      "minVersion": "26.0",
+      "recommendedVersion": "26.6.2",
+      "buildVersion": "25G83",
+      "arch": "arm64",
+      "description": "Apple Silicon macOS 建置主機版本（iOS / Xcode 編譯必備）"
+    },
+    "xcode": {
+      "minVersion": "26.0",
+      "recommendedVersion": "26.6",
+      "buildVersion": "17F113",
+      "description": "iOS 與 Flutter iOS 平台編譯環境"
+    },
+    "swift": {
+      "minVersion": "6.0",
+      "recommendedVersion": "6.3.3",
+      "description": "iOS 原生開發語言與 Swift Package 編譯器"
+    },
+    "cocoapods": {
+      "minVersion": "1.16.0",
+      "recommendedVersion": "1.16.2",
+      "description": "iOS / Flutter iOS 相依套件管理工具（支援 Moya / Firebase Pod 或 SPM）"
+    },
+    "flutter": {
+      "channel": "stable",
+      "minVersion": "3.41.0",
+      "recommendedVersion": "3.41.9",
+      "description": "Flutter 跨平台 UI 框架"
+    },
+    "dart": {
+      "minVersion": "3.11.0",
+      "recommendedVersion": "3.11.5",
+      "description": "Flutter 應用程式語言"
+    },
+    "java": {
+      "minVersion": 17,
+      "recommendedVersion": "17.0.19",
+      "studioJbrVersion": "21.0.10",
+      "description": "Android 原生建置與 Gradle 執行環境（支援 JDK 17 / 21）"
+    },
+    "gradle": {
+      "minVersion": "9.0.0",
+      "recommendedVersion": "9.8.2",
+      "description": "Android 建置自動化工具（各平台建立專案後對齊 Wrapper 設定）"
+    },
+    "androidGradlePlugin": {
+      "minVersion": "9.0.0",
+      "recommendedVersion": "9.4.1",
+      "description": "Android Gradle Plugin (AGP)"
+    },
+    "kotlin": {
+      "minVersion": "2.0.0",
+      "recommendedVersion": "2.4.21",
+      "description": "Android 原生開發語言（Jetpack Compose）"
+    },
+    "androidSdk": {
+      "minCompileSdk": 34,
+      "recommendedCompileSdk": 37,
+      "installedBuildToolsMax": "37.0.0",
+      "description": "Android 平台編譯 SDK（本機已安裝 android-34 至 android-37.0）"
+    },
+    "androidNdk": {
+      "requiredVersion": "28.2.13676358",
+      "description": "Android NDK 版本"
+    }
+  }
+}

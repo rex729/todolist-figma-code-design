@@ -1,0 +1,102 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // 假設資料模型 (Assumed Data Model)
+    // ===============================================================
+    //
+    // 本安全規則針對預設資料庫 (default)（Standard Edition）定義以下資料結構：
+    //
+    // 集合路徑：/users/{uid}/todos/{todoId}
+    // 文件 ID：由 Cloud Firestore 自動生成之 todoId
+    // 欄位規格（必填且僅允許下列 5 個欄位）：
+    //   - title: string（必填，去前後空白後長度為 1..100 字元，並限制原始長度上限以防 DoS）
+    //   - dueDate: string（必填，嚴格符合 YYYY-MM-DD 格式 ^\d{4}-\d{2}-\d{2}$）
+    //   - status: string（必填，僅限 'TODO'、'IN PROGRESS'、'DONE'）
+    //   - createdAt: timestamp（必填，建立後不可變更）
+    //   - updatedAt: timestamp（必填，須為有效 timestamp）
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // 通用輔助函式 (Helper Functions)
+    // ===============================================================
+
+    // 檢查請求者是否已通過 Firebase Authentication 驗證（拒絕未登入與匿名存取）
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // 檢查請求者是否為指定 uid 的資源擁有者（強制使用者資料隔離）
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // 檢查文件是否包含所有必填欄位
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // 檢查文件是否僅包含白名單允許的欄位（防止 Schema 污染與多餘欄位注入）
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // 檢查指定的不可變欄位在更新時是否保持未修改
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // ===============================================================
+    // 領域驗證函式 (Domain Validators)
+    // ===============================================================
+
+    // 驗證待辦事項之結構、型別、格式與長度限制（同時套用於 create 與 update）
+    function isValidTodo(data) {
+      let allowedKeys = ['title', 'dueDate', 'status', 'createdAt', 'updatedAt'];
+
+      return hasOnlyAllowedFields(allowedKeys) &&
+             hasRequiredFields(allowedKeys) &&
+             // title 須為字串，去空白後長度介於 1 到 100 字元，並限制原始長度上限以防資源耗盡攻擊
+             data.title is string &&
+             data.title.trim().size() >= 1 &&
+             data.title.trim().size() <= 100 &&
+             data.title.size() <= 500 &&
+             // dueDate 須為嚴格 ISO yyyy-mm-dd 格式字串
+             data.dueDate is string &&
+             data.dueDate.matches('^\\d{4}-\\d{2}-\\d{2}$') &&
+             // status 須為允許的進度狀態列舉值之一
+             data.status is string &&
+             data.status in ['TODO', 'IN PROGRESS', 'DONE'] &&
+             // createdAt 與 updatedAt 皆須為有效的 Firestore timestamp
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    // 驗證更新操作之不可變欄位保護（確保 createdAt 不得竄改）
+    function isValidTodoUpdate() {
+      return areImmutableFieldsUnchanged(['createdAt']) &&
+             request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    // ===============================================================
+    // 集合存取規則 (Collection Rules)
+    // ===============================================================
+
+    // 僅允許已驗證使用者讀取、列表、建立、更新與刪除自己 uid 底下的待辦事項
+    match /users/{uid}/todos/{todoId} {
+      // read 同時涵蓋單筆讀取 (get) 與集合查詢／即時監聽 (list)
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && isValidTodo(request.resource.data);
+      allow update: if isOwner(uid) && isValidTodo(request.resource.data) && isValidTodoUpdate();
+      allow delete: if isOwner(uid);
+    }
+
+    // 預設全面拒絕其他所有路徑與子集合的存取（Default Deny）
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
