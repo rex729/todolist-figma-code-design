@@ -2,26 +2,23 @@
  * Screen: Main
  * ⚠️ 修改本檔後，請務必執行 `sh FigmaDesigner/build_plugin.sh` 同步更新 Figma Plugin。
  *
- * 負責建構 `Main` Page (`Main Screen` 393×852)：
- * - `TopNavBar`：左側 `NavTitle` ("My Todo List") + 右側 `AddButton` ("+ Add")
+ * 負責建構 `Screens` Page 內的 `Main Screen` (393×852)：
+ * - `TopNavBar`：左側 `NavTitle` ("My Todo List") + 右側 `NavActions`（`AddButton` `"+ Add"` 與右側 `SettingButton` `◇ Icon/setting`）
  * - `ListView`：垂直自動佈局，內嵌 3 筆不同狀態 (`TODO` / `IN PROGRESS` / `DONE`) 的 `◇ ToDoCellItem` Instances
- * - 底部配置 `LogOut` 按鈕（`◇ AppButton` `Style=Secondary` Instance，文字 `"LogOut"`，底部間距 `spacing/3xl`）
  */
 (async () => {
   const ctx = await createFigmaDesignerContext();
 
-  // 從 Components Page 取得 ToDoCellItem 與 AppButton 母體與屬性定義
+  // 從 Components Page 取得 ToDoCellItem 與 Icon/setting 母體與屬性定義
   const compPage = figma.root.children.find(p => p.name === 'Components');
-  if (!compPage) throw new Error('Components page not found. Please run Components first!');
+  if (!compPage) throw new Error('找不到 Components Page，請先執行 Components！');
   await compPage.loadAsync();
 
   const todoSet = compPage.children.find(n => n.type === 'COMPONENT_SET' && n.name === 'ToDoCellItem');
-  if (!todoSet) throw new Error('ToDoCellItem not found on the Components page!');
+  if (!todoSet) throw new Error('在 Components Page 找不到 ToDoCellItem！');
 
-  const appButtonSet = compPage.children.find(n => n.type === 'COMPONENT_SET' && n.name === 'AppButton');
-  if (!appButtonSet) throw new Error('AppButton not found on the Components page!');
-  const secondaryBtnVariant = appButtonSet.children.find(c => c.name === 'Style=Secondary') || appButtonSet.children[0];
-  const btnLabelPropKey = Object.keys(appButtonSet.componentPropertyDefinitions || {}).find(k => k.startsWith('Label'));
+  const settingIconComp = compPage.findOne(n => n.type === 'COMPONENT' && n.name === 'Icon/setting');
+  if (!settingIconComp) throw new Error('在 Components Page 找不到 Icon/setting，請先重新執行 Components！');
 
   const propDefs = todoSet.componentPropertyDefinitions;
   const titlePropKey = Object.keys(propDefs).find(k => k.startsWith('Title'));
@@ -31,11 +28,11 @@
   const inProgressVariant = todoSet.children.find(c => c.name === 'Status=IN PROGRESS') || todoSet.children[1] || todoSet.children[0];
   const doneVariant = todoSet.children.find(c => c.name === 'Status=DONE') || todoSet.children[2] || todoSet.children[0];
 
-  // 切換至 Main Page（不存在則自動建立）
-  const mainPage = await ctx.getOrCreatePage('Main', ['主畫面']);
+  // 切換至共用 Screens Page（Starter 雙頁架構：Screens + Components）
+  const screensPage = await ctx.getOrCreateScreensPage();
 
   // 徹底刪除既有的 Main Screen、重複畫布或空白 Frame
-  for (const child of [...mainPage.children]) {
+  for (const child of [...screensPage.children]) {
     if (
       child.name === 'Main Screen' ||
       child.name === 'TopNavBar' ||
@@ -49,6 +46,7 @@
   const mainScreen = figma.createFrame();
   mainScreen.name = 'Main Screen';
   mainScreen.resize(393, 852);
+  ctx.placeScreenOnCanvas(screensPage, mainScreen, 1);
   mainScreen.layoutMode = 'VERTICAL';
   mainScreen.primaryAxisSizingMode = 'FIXED';
   mainScreen.counterAxisSizingMode = 'FIXED';
@@ -59,7 +57,7 @@
   ctx.bindFloat(mainScreen, 'paddingBottom', 'spacing/3xl', 32);
   ctx.bindFloat(mainScreen, 'itemSpacing', 'spacing/xl', 20);
 
-  // 頂部導覽列 TopNavBar
+  // 頂部導覽列 TopNavBar：[NavTitle] + [NavActions: AddButton + SettingButton]
   const topNav = figma.createFrame();
   topNav.name = 'TopNavBar';
   topNav.layoutMode = 'HORIZONTAL';
@@ -82,6 +80,18 @@
   topNav.appendChild(navTitle);
   navTitle.layoutSizingHorizontal = 'HUG';
 
+  const navActions = figma.createFrame();
+  navActions.name = 'NavActions';
+  navActions.layoutMode = 'HORIZONTAL';
+  navActions.primaryAxisSizingMode = 'AUTO';
+  navActions.counterAxisSizingMode = 'AUTO';
+  navActions.counterAxisAlignItems = 'CENTER';
+  navActions.fills = [];
+  topNav.appendChild(navActions);
+  navActions.layoutSizingHorizontal = 'HUG';
+  navActions.layoutSizingVertical = 'HUG';
+  ctx.bindFloat(navActions, 'itemSpacing', 'spacing/sm', 8);
+
   const addBtn = figma.createFrame();
   addBtn.name = 'AddButton';
   addBtn.layoutMode = 'HORIZONTAL';
@@ -89,7 +99,7 @@
   addBtn.counterAxisSizingMode = 'FIXED';
   addBtn.primaryAxisAlignItems = 'CENTER';
   addBtn.counterAxisAlignItems = 'CENTER';
-  topNav.appendChild(addBtn);
+  navActions.appendChild(addBtn);
   addBtn.resize(76, 36);
   addBtn.layoutSizingHorizontal = 'HUG';
   addBtn.layoutSizingVertical = 'FIXED';
@@ -110,6 +120,32 @@
   await ctx.applyTextStyle(addBtnText, 'Label/Medium');
   ctx.bindFill(addBtnText, 'light/text/on-brand', { r: 1, g: 1, b: 1 });
   addBtn.appendChild(addBtnText);
+
+  // 右側 Setting 圖示按鈕（36 × 36, size/control-sm, radius/sm）
+  const settingBtn = figma.createFrame();
+  settingBtn.name = 'SettingButton';
+  settingBtn.layoutMode = 'HORIZONTAL';
+  settingBtn.primaryAxisSizingMode = 'FIXED';
+  settingBtn.counterAxisSizingMode = 'FIXED';
+  settingBtn.primaryAxisAlignItems = 'CENTER';
+  settingBtn.counterAxisAlignItems = 'CENTER';
+  navActions.appendChild(settingBtn);
+  settingBtn.resize(36, 36);
+  ctx.bindFloat(settingBtn, 'width', 'size/control-sm', 36);
+  ctx.bindFloat(settingBtn, 'height', 'size/control-sm', 36);
+  ctx.bindFill(settingBtn, 'light/bg/subtle', { r: 0.933, g: 0.949, b: 0.965 });
+  ctx.bindStroke(settingBtn, 'light/border/default', { r: 0.898, g: 0.906, b: 0.922 });
+  ctx.bindFloat(settingBtn, 'strokeWeight', 'stroke/thin', 1);
+  ctx.bindFloat(settingBtn, 'topLeftRadius', 'radius/sm', 8);
+  ctx.bindFloat(settingBtn, 'topRightRadius', 'radius/sm', 8);
+  ctx.bindFloat(settingBtn, 'bottomLeftRadius', 'radius/sm', 8);
+  ctx.bindFloat(settingBtn, 'bottomRightRadius', 'radius/sm', 8);
+
+  const settingIconInst = settingIconComp.createInstance();
+  settingIconInst.name = 'Icon/setting';
+  settingBtn.appendChild(settingIconInst);
+  ctx.bindFloat(settingIconInst, 'width', 'size/icon-md', 20);
+  ctx.bindFloat(settingIconInst, 'height', 'size/icon-md', 20);
 
   // ListView 容器
   const listView = figma.createFrame();
@@ -141,20 +177,6 @@
     if (Object.keys(propsToUpdate).length > 0) {
       inst.setProperties(propsToUpdate);
     }
-  }
-
-  // 最下方 LogOut 按鈕（底部保留 spacing/3xl = 32px 間距，文字採 Label/Large + light/text/primary）
-  const logoutBtn = secondaryBtnVariant.createInstance();
-  logoutBtn.name = 'LogOut';
-  mainScreen.appendChild(logoutBtn);
-  logoutBtn.layoutSizingHorizontal = 'FILL';
-  if (btnLabelPropKey) {
-    logoutBtn.setProperties({ [btnLabelPropKey]: 'LogOut' });
-  }
-  const logoutLabelNode = logoutBtn.findOne(n => n.type === 'TEXT' && n.name === 'Label');
-  if (logoutLabelNode) {
-    await ctx.applyTextStyle(logoutLabelNode, 'Label/Large');
-    ctx.bindFill(logoutLabelNode, 'light/text/primary', { r: 0.067, g: 0.094, b: 0.153 });
   }
 
   await ctx.cleanupEmptyPage1AndSort();

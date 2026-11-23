@@ -1,5 +1,5 @@
 // ⚠️ 此檔案由 build_plugin.sh 自動從 foundations.js / components.js / helpers/* / screens/*.js 生成，請勿手動修改！
-const PLUGIN_BUILD_TIME = "2026-11-20 22:57:43";
+const PLUGIN_BUILD_TIME = "2026-11-23 19:57:08";
 
 /**
  * MCPTest Figma Design-as-Code — 共用工具函式庫 (Helpers)
@@ -68,6 +68,79 @@ async function createFigmaDesignerContext() {
     return page;
   }
 
+  /**
+   * 因應 Figma Starter 方案最多 3 頁限制，將所有 App 畫面集中管理於單一 `Screens` Page。
+   * 若偵測到舊版獨立頁面（Login / Main / Setting / Page 1），會自動合併現有畫面並清理多餘頁面。
+   */
+  async function getOrCreateScreensPage() {
+    const legacyScreenPageNames = new Set([
+      'login', '登入',
+      'main', '主畫面',
+      'setting', 'settings', '設定',
+      'page 1'
+    ]);
+
+    let screensPage = figma.root.children.find(p => p.name.toLowerCase() === 'screens');
+    if (!screensPage) {
+      const reusable = figma.root.children.find(
+        p => p.name !== 'Components' && legacyScreenPageNames.has(p.name.toLowerCase())
+      ) || figma.root.children.find(p => p.name !== 'Components');
+
+      if (reusable) {
+        reusable.name = 'Screens';
+        screensPage = reusable;
+      } else {
+        screensPage = figma.createPage();
+        screensPage.name = 'Screens';
+      }
+    }
+
+    await figma.setCurrentPageAsync(screensPage);
+    await screensPage.loadAsync();
+
+    // 合併並移除殘留的舊版個別畫面頁，確保畫面上保留為 Screens + Components 雙頁架構
+    for (const p of [...figma.root.children]) {
+      if (p.id === screensPage.id || p.name === 'Components') continue;
+      if (!legacyScreenPageNames.has(p.name.toLowerCase())) continue;
+      await p.loadAsync();
+      for (const child of [...p.children]) {
+        const isEmptyFrame = child.type === 'FRAME' && child.children.length === 0;
+        const alreadyInScreens = screensPage.children.some(existing => existing.name === child.name);
+        if (!isEmptyFrame && !alreadyInScreens && child.name.endsWith('Screen')) {
+          screensPage.appendChild(child);
+        } else {
+          child.remove();
+        }
+      }
+      if (p.children.length === 0 && figma.root.children.length > 1) {
+        p.remove();
+      }
+    }
+
+    // 依標準位置重新對齊 Screens Page 內既有的 Screen Frames
+    const slotByName = {
+      'Login Screen': 0,
+      'Main Screen': 1,
+      'Setting Screen': 2
+    };
+    for (const child of screensPage.children) {
+      if (Object.prototype.hasOwnProperty.call(slotByName, child.name)) {
+        child.x = slotByName[child.name] * (393 + 64);
+        child.y = 0;
+      }
+    }
+
+    return screensPage;
+  }
+
+  function placeScreenOnCanvas(screensPage, screenNode, slotIndex) {
+    if (screenNode.parent !== screensPage) {
+      screensPage.appendChild(screenNode);
+    }
+    screenNode.x = slotIndex * (393 + 64);
+    screenNode.y = 0;
+  }
+
   async function cleanupEmptyPage1AndSort() {
     for (const p of [...figma.root.children]) {
       if (
@@ -104,6 +177,8 @@ async function createFigmaDesignerContext() {
     applyTextStyle,
     applyEffectStyle,
     getOrCreatePage,
+    getOrCreateScreensPage,
+    placeScreenOnCanvas,
     cleanupEmptyPage1AndSort
   };
 }
@@ -453,7 +528,8 @@ await Promise.all([
     'Icon/status-todo': `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>`,
     'Icon/status-in-progress': `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>`,
     'Icon/status-done': `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
-    'Icon/trash': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`
+    'Icon/trash': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`,
+    'Icon/setting': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`
   };
 
   const iconsLib = figma.createFrame();
@@ -922,7 +998,7 @@ await Promise.all([
   }
 
   figma.viewport.scrollAndZoomIntoView([iconsLib, todoSet, appButtonSet, appTextFieldSet, sheet]);
-  console.log('✅ [Phase 2: Components] Icons Library (20), ToDoCellItem, AppButton, AppTextField, AddTaskSheet 建立完成！');
+  console.log('✅ [Phase 2: Components] Icons Library (21), ToDoCellItem, AppButton, AppTextField, AddTaskSheet 建立完成！');
 }
 
 async function runScreen_login() {
@@ -930,15 +1006,15 @@ const ctx = await createFigmaDesignerContext();
 
   // 從 Components Page 取得 Icon/google 母體
   const compPage = figma.root.children.find(p => p.name === 'Components');
-  if (!compPage) throw new Error('Components page not found. Please run Components first!');
+  if (!compPage) throw new Error('找不到 Components Page，請先執行 Components！');
   await compPage.loadAsync();
   const googleIconComp = compPage.findOne(n => n.type === 'COMPONENT' && n.name === 'Icon/google');
 
-  // 切換至 Login Page（不存在則自動建立）
-  const loginPage = await ctx.getOrCreatePage('Login', ['登入']);
+  // 切換至共用 Screens Page（Starter 雙頁架構：Screens + Components）
+  const screensPage = await ctx.getOrCreateScreensPage();
 
   // 徹底刪除既有的 Login Screen、重複畫布或空白 Frame
-  for (const child of [...loginPage.children]) {
+  for (const child of [...screensPage.children]) {
     if (
       child.name === 'Login Screen' ||
       child.name === 'Google Login Button' ||
@@ -951,6 +1027,7 @@ const ctx = await createFigmaDesignerContext();
   const loginScreen = figma.createFrame();
   loginScreen.name = 'Login Screen';
   loginScreen.resize(393, 852);
+  ctx.placeScreenOnCanvas(screensPage, loginScreen, 0);
   loginScreen.layoutMode = 'VERTICAL';
   loginScreen.primaryAxisSizingMode = 'FIXED';
   loginScreen.counterAxisSizingMode = 'FIXED';
@@ -1007,18 +1084,16 @@ const ctx = await createFigmaDesignerContext();
 async function runScreen_main() {
 const ctx = await createFigmaDesignerContext();
 
-  // 從 Components Page 取得 ToDoCellItem 與 AppButton 母體與屬性定義
+  // 從 Components Page 取得 ToDoCellItem 與 Icon/setting 母體與屬性定義
   const compPage = figma.root.children.find(p => p.name === 'Components');
-  if (!compPage) throw new Error('Components page not found. Please run Components first!');
+  if (!compPage) throw new Error('找不到 Components Page，請先執行 Components！');
   await compPage.loadAsync();
 
   const todoSet = compPage.children.find(n => n.type === 'COMPONENT_SET' && n.name === 'ToDoCellItem');
-  if (!todoSet) throw new Error('ToDoCellItem not found on the Components page!');
+  if (!todoSet) throw new Error('在 Components Page 找不到 ToDoCellItem！');
 
-  const appButtonSet = compPage.children.find(n => n.type === 'COMPONENT_SET' && n.name === 'AppButton');
-  if (!appButtonSet) throw new Error('AppButton not found on the Components page!');
-  const secondaryBtnVariant = appButtonSet.children.find(c => c.name === 'Style=Secondary') || appButtonSet.children[0];
-  const btnLabelPropKey = Object.keys(appButtonSet.componentPropertyDefinitions || {}).find(k => k.startsWith('Label'));
+  const settingIconComp = compPage.findOne(n => n.type === 'COMPONENT' && n.name === 'Icon/setting');
+  if (!settingIconComp) throw new Error('在 Components Page 找不到 Icon/setting，請先重新執行 Components！');
 
   const propDefs = todoSet.componentPropertyDefinitions;
   const titlePropKey = Object.keys(propDefs).find(k => k.startsWith('Title'));
@@ -1028,11 +1103,11 @@ const ctx = await createFigmaDesignerContext();
   const inProgressVariant = todoSet.children.find(c => c.name === 'Status=IN PROGRESS') || todoSet.children[1] || todoSet.children[0];
   const doneVariant = todoSet.children.find(c => c.name === 'Status=DONE') || todoSet.children[2] || todoSet.children[0];
 
-  // 切換至 Main Page（不存在則自動建立）
-  const mainPage = await ctx.getOrCreatePage('Main', ['主畫面']);
+  // 切換至共用 Screens Page（Starter 雙頁架構：Screens + Components）
+  const screensPage = await ctx.getOrCreateScreensPage();
 
   // 徹底刪除既有的 Main Screen、重複畫布或空白 Frame
-  for (const child of [...mainPage.children]) {
+  for (const child of [...screensPage.children]) {
     if (
       child.name === 'Main Screen' ||
       child.name === 'TopNavBar' ||
@@ -1046,6 +1121,7 @@ const ctx = await createFigmaDesignerContext();
   const mainScreen = figma.createFrame();
   mainScreen.name = 'Main Screen';
   mainScreen.resize(393, 852);
+  ctx.placeScreenOnCanvas(screensPage, mainScreen, 1);
   mainScreen.layoutMode = 'VERTICAL';
   mainScreen.primaryAxisSizingMode = 'FIXED';
   mainScreen.counterAxisSizingMode = 'FIXED';
@@ -1056,7 +1132,7 @@ const ctx = await createFigmaDesignerContext();
   ctx.bindFloat(mainScreen, 'paddingBottom', 'spacing/3xl', 32);
   ctx.bindFloat(mainScreen, 'itemSpacing', 'spacing/xl', 20);
 
-  // 頂部導覽列 TopNavBar
+  // 頂部導覽列 TopNavBar：[NavTitle] + [NavActions: AddButton + SettingButton]
   const topNav = figma.createFrame();
   topNav.name = 'TopNavBar';
   topNav.layoutMode = 'HORIZONTAL';
@@ -1079,6 +1155,18 @@ const ctx = await createFigmaDesignerContext();
   topNav.appendChild(navTitle);
   navTitle.layoutSizingHorizontal = 'HUG';
 
+  const navActions = figma.createFrame();
+  navActions.name = 'NavActions';
+  navActions.layoutMode = 'HORIZONTAL';
+  navActions.primaryAxisSizingMode = 'AUTO';
+  navActions.counterAxisSizingMode = 'AUTO';
+  navActions.counterAxisAlignItems = 'CENTER';
+  navActions.fills = [];
+  topNav.appendChild(navActions);
+  navActions.layoutSizingHorizontal = 'HUG';
+  navActions.layoutSizingVertical = 'HUG';
+  ctx.bindFloat(navActions, 'itemSpacing', 'spacing/sm', 8);
+
   const addBtn = figma.createFrame();
   addBtn.name = 'AddButton';
   addBtn.layoutMode = 'HORIZONTAL';
@@ -1086,7 +1174,7 @@ const ctx = await createFigmaDesignerContext();
   addBtn.counterAxisSizingMode = 'FIXED';
   addBtn.primaryAxisAlignItems = 'CENTER';
   addBtn.counterAxisAlignItems = 'CENTER';
-  topNav.appendChild(addBtn);
+  navActions.appendChild(addBtn);
   addBtn.resize(76, 36);
   addBtn.layoutSizingHorizontal = 'HUG';
   addBtn.layoutSizingVertical = 'FIXED';
@@ -1107,6 +1195,32 @@ const ctx = await createFigmaDesignerContext();
   await ctx.applyTextStyle(addBtnText, 'Label/Medium');
   ctx.bindFill(addBtnText, 'light/text/on-brand', { r: 1, g: 1, b: 1 });
   addBtn.appendChild(addBtnText);
+
+  // 右側 Setting 圖示按鈕（36 × 36, size/control-sm, radius/sm）
+  const settingBtn = figma.createFrame();
+  settingBtn.name = 'SettingButton';
+  settingBtn.layoutMode = 'HORIZONTAL';
+  settingBtn.primaryAxisSizingMode = 'FIXED';
+  settingBtn.counterAxisSizingMode = 'FIXED';
+  settingBtn.primaryAxisAlignItems = 'CENTER';
+  settingBtn.counterAxisAlignItems = 'CENTER';
+  navActions.appendChild(settingBtn);
+  settingBtn.resize(36, 36);
+  ctx.bindFloat(settingBtn, 'width', 'size/control-sm', 36);
+  ctx.bindFloat(settingBtn, 'height', 'size/control-sm', 36);
+  ctx.bindFill(settingBtn, 'light/bg/subtle', { r: 0.933, g: 0.949, b: 0.965 });
+  ctx.bindStroke(settingBtn, 'light/border/default', { r: 0.898, g: 0.906, b: 0.922 });
+  ctx.bindFloat(settingBtn, 'strokeWeight', 'stroke/thin', 1);
+  ctx.bindFloat(settingBtn, 'topLeftRadius', 'radius/sm', 8);
+  ctx.bindFloat(settingBtn, 'topRightRadius', 'radius/sm', 8);
+  ctx.bindFloat(settingBtn, 'bottomLeftRadius', 'radius/sm', 8);
+  ctx.bindFloat(settingBtn, 'bottomRightRadius', 'radius/sm', 8);
+
+  const settingIconInst = settingIconComp.createInstance();
+  settingIconInst.name = 'Icon/setting';
+  settingBtn.appendChild(settingIconInst);
+  ctx.bindFloat(settingIconInst, 'width', 'size/icon-md', 20);
+  ctx.bindFloat(settingIconInst, 'height', 'size/icon-md', 20);
 
   // ListView 容器
   const listView = figma.createFrame();
@@ -1140,10 +1254,352 @@ const ctx = await createFigmaDesignerContext();
     }
   }
 
-  // 最下方 LogOut 按鈕（底部保留 spacing/3xl = 32px 間距，文字採 Label/Large + light/text/primary）
+  await ctx.cleanupEmptyPage1AndSort();
+  figma.viewport.scrollAndZoomIntoView([mainScreen]);
+  console.log('✅ [Screen: Main] Main Page 建立完成！');
+}
+async function runScreen_setting() {
+const ctx = await createFigmaDesignerContext();
+
+  // 從 Components Page 取得共用元件與 Icons Library 母體
+  const compPage = figma.root.children.find(p => p.name === 'Components');
+  if (!compPage) throw new Error('找不到 Components Page，請先執行 Components！');
+  await compPage.loadAsync();
+
+  const appButtonSet = compPage.children.find(n => n.type === 'COMPONENT_SET' && n.name === 'AppButton');
+  if (!appButtonSet) throw new Error('在 Components Page 找不到 AppButton！');
+  const secondaryBtnVariant = appButtonSet.children.find(c => c.name === 'Style=Secondary') || appButtonSet.children[0];
+  const btnLabelPropKey = Object.keys(appButtonSet.componentPropertyDefinitions || {}).find(k => k.startsWith('Label'));
+
+  function findIcon(name) {
+    return compPage.findOne(n => n.type === 'COMPONENT' && n.name === name);
+  }
+
+  // 切換至共用 Screens Page（Starter 雙頁架構：Screens + Components）
+  const screensPage = await ctx.getOrCreateScreensPage();
+
+  // 冪等清理：徹底刪除既有的 Setting Screen、舊版殘留容器或空白 Frame
+  for (const child of [...screensPage.children]) {
+    if (
+      child.name === 'Setting Screen' ||
+      child.name === 'Profile Card' ||
+      child.name === 'Preferences Section' ||
+      (child.type === 'FRAME' && child.children.length === 0)
+    ) {
+      child.remove();
+    }
+  }
+
+  // 外層 Setting Screen (393 × 852, Vertical Auto Layout)
+  const settingScreen = figma.createFrame();
+  settingScreen.name = 'Setting Screen';
+  settingScreen.resize(393, 852);
+  settingScreen.layoutMode = 'VERTICAL';
+  settingScreen.primaryAxisSizingMode = 'FIXED';
+  settingScreen.counterAxisSizingMode = 'FIXED';
+  ctx.bindFill(settingScreen, 'light/bg/canvas', { r: 0.96, g: 0.97, b: 0.98 });
+  ctx.bindFloat(settingScreen, 'paddingLeft', 'spacing/lg', 16);
+  ctx.bindFloat(settingScreen, 'paddingRight', 'spacing/lg', 16);
+  ctx.bindFloat(settingScreen, 'paddingTop', 'spacing/4xl', 48);
+  ctx.bindFloat(settingScreen, 'paddingBottom', 'spacing/3xl', 32);
+  ctx.bindFloat(settingScreen, 'itemSpacing', 'spacing/xl', 20);
+  ctx.placeScreenOnCanvas(screensPage, settingScreen, 2);
+
+  // 1. 頂部導覽列 TopNavBar
+  const topNav = figma.createFrame();
+  topNav.name = 'TopNavBar';
+  topNav.layoutMode = 'HORIZONTAL';
+  topNav.primaryAxisSizingMode = 'FIXED';
+  topNav.counterAxisSizingMode = 'AUTO';
+  topNav.primaryAxisAlignItems = 'SPACE_BETWEEN';
+  topNav.counterAxisAlignItems = 'CENTER';
+  topNav.fills = [];
+  settingScreen.appendChild(topNav);
+  topNav.layoutSizingHorizontal = 'FILL';
+  topNav.layoutSizingVertical = 'HUG';
+
+  const navTitle = figma.createText();
+  navTitle.name = 'NavTitle';
+  navTitle.fontName = { family: 'Inter', style: 'Bold' };
+  navTitle.fontSize = 24;
+  navTitle.characters = 'Settings';
+  await ctx.applyTextStyle(navTitle, 'Heading/H1');
+  ctx.bindFill(navTitle, 'light/text/primary', { r: 0.067, g: 0.094, b: 0.153 });
+  topNav.appendChild(navTitle);
+  navTitle.layoutSizingHorizontal = 'HUG';
+
+  // 2. 帳號資訊卡片 Profile Card
+  const profileCard = figma.createFrame();
+  profileCard.name = 'Profile Card';
+  profileCard.layoutMode = 'HORIZONTAL';
+  profileCard.primaryAxisSizingMode = 'FIXED';
+  profileCard.counterAxisSizingMode = 'AUTO';
+  profileCard.counterAxisAlignItems = 'CENTER';
+  settingScreen.appendChild(profileCard);
+  profileCard.layoutSizingHorizontal = 'FILL';
+  profileCard.layoutSizingVertical = 'HUG';
+  ctx.bindFill(profileCard, 'light/bg/surface', { r: 1, g: 1, b: 1 });
+  ctx.bindStroke(profileCard, 'light/border/default', { r: 0.898, g: 0.906, b: 0.922 });
+  ctx.bindFloat(profileCard, 'strokeWeight', 'stroke/thin', 1);
+  ctx.bindFloat(profileCard, 'topLeftRadius', 'radius/md', 12);
+  ctx.bindFloat(profileCard, 'topRightRadius', 'radius/md', 12);
+  ctx.bindFloat(profileCard, 'bottomLeftRadius', 'radius/md', 12);
+  ctx.bindFloat(profileCard, 'bottomRightRadius', 'radius/md', 12);
+  ctx.bindFloat(profileCard, 'paddingLeft', 'spacing/lg', 16);
+  ctx.bindFloat(profileCard, 'paddingRight', 'spacing/lg', 16);
+  ctx.bindFloat(profileCard, 'paddingTop', 'spacing/lg', 16);
+  ctx.bindFloat(profileCard, 'paddingBottom', 'spacing/lg', 16);
+  ctx.bindFloat(profileCard, 'itemSpacing', 'spacing/md', 12);
+  await ctx.applyEffectStyle(profileCard, 'Elevation/Card');
+
+  const avatarBadge = figma.createFrame();
+  avatarBadge.name = 'Avatar Badge';
+  avatarBadge.layoutMode = 'HORIZONTAL';
+  avatarBadge.primaryAxisSizingMode = 'FIXED';
+  avatarBadge.counterAxisSizingMode = 'FIXED';
+  avatarBadge.primaryAxisAlignItems = 'CENTER';
+  avatarBadge.counterAxisAlignItems = 'CENTER';
+  avatarBadge.resize(44, 44);
+  ctx.bindFill(avatarBadge, 'light/brand/secondary', { r: 0.902, g: 0.941, b: 1 });
+  ctx.bindFloat(avatarBadge, 'width', 'size/control-md', 44);
+  ctx.bindFloat(avatarBadge, 'height', 'size/control-md', 44);
+  ctx.bindFloat(avatarBadge, 'topLeftRadius', 'radius/full', 9999);
+  ctx.bindFloat(avatarBadge, 'topRightRadius', 'radius/full', 9999);
+  ctx.bindFloat(avatarBadge, 'bottomLeftRadius', 'radius/full', 9999);
+  ctx.bindFloat(avatarBadge, 'bottomRightRadius', 'radius/full', 9999);
+  profileCard.appendChild(avatarBadge);
+
+  const googleIconComp = findIcon('Icon/google');
+  if (googleIconComp) {
+    const iconNode = googleIconComp.createInstance();
+    iconNode.name = 'Icon/google';
+    avatarBadge.appendChild(iconNode);
+    ctx.bindFloat(iconNode, 'width', 'size/icon-md', 20);
+    ctx.bindFloat(iconNode, 'height', 'size/icon-md', 20);
+  }
+
+  const accountInfo = figma.createFrame();
+  accountInfo.name = 'Account Info';
+  accountInfo.layoutMode = 'VERTICAL';
+  accountInfo.primaryAxisSizingMode = 'AUTO';
+  accountInfo.counterAxisSizingMode = 'FIXED';
+  accountInfo.fills = [];
+  profileCard.appendChild(accountInfo);
+  accountInfo.layoutSizingHorizontal = 'FILL';
+  accountInfo.layoutSizingVertical = 'HUG';
+  ctx.bindFloat(accountInfo, 'itemSpacing', 'spacing/2xs', 2);
+
+  const accountTitle = figma.createText();
+  accountTitle.name = 'Account Title';
+  accountTitle.fontName = { family: 'Inter', style: 'Semi Bold' };
+  accountTitle.fontSize = 16;
+  accountTitle.characters = 'Signed in with Google';
+  await ctx.applyTextStyle(accountTitle, 'Label/Large');
+  ctx.bindFill(accountTitle, 'light/text/primary', { r: 0.067, g: 0.094, b: 0.153 });
+  accountInfo.appendChild(accountTitle);
+  accountTitle.layoutSizingHorizontal = 'FILL';
+
+  const accountEmail = figma.createText();
+  accountEmail.name = 'Account Email';
+  accountEmail.fontName = { family: 'Inter', style: 'Regular' };
+  accountEmail.fontSize = 14;
+  accountEmail.characters = 'user@example.com';
+  await ctx.applyTextStyle(accountEmail, 'Body/Medium');
+  ctx.bindFill(accountEmail, 'light/text/secondary', { r: 0.294, g: 0.333, b: 0.388 });
+  accountInfo.appendChild(accountEmail);
+  accountEmail.layoutSizingHorizontal = 'FILL';
+
+  // 3. Preferences 區塊（垂直撐滿剩餘空間，讓底部 LogOut 對齊底部）
+  const prefSection = figma.createFrame();
+  prefSection.name = 'Preferences Section';
+  prefSection.layoutMode = 'VERTICAL';
+  prefSection.primaryAxisSizingMode = 'FIXED';
+  prefSection.counterAxisSizingMode = 'FIXED';
+  prefSection.fills = [];
+  settingScreen.appendChild(prefSection);
+  prefSection.layoutSizingHorizontal = 'FILL';
+  prefSection.layoutSizingVertical = 'FILL';
+  ctx.bindFloat(prefSection, 'itemSpacing', 'spacing/sm', 8);
+
+  const prefHeader = figma.createText();
+  prefHeader.name = 'Section Header';
+  prefHeader.fontName = { family: 'Inter', style: 'Medium' };
+  prefHeader.fontSize = 14;
+  prefHeader.characters = 'Preferences';
+  await ctx.applyTextStyle(prefHeader, 'Label/Medium');
+  ctx.bindFill(prefHeader, 'light/text/secondary', { r: 0.294, g: 0.333, b: 0.388 });
+  prefSection.appendChild(prefHeader);
+  prefHeader.layoutSizingHorizontal = 'FILL';
+
+  const prefGroupCard = figma.createFrame();
+  prefGroupCard.name = 'Preferences Card';
+  prefGroupCard.layoutMode = 'VERTICAL';
+  prefGroupCard.primaryAxisSizingMode = 'AUTO';
+  prefGroupCard.counterAxisSizingMode = 'FIXED';
+  prefSection.appendChild(prefGroupCard);
+  prefGroupCard.layoutSizingHorizontal = 'FILL';
+  prefGroupCard.layoutSizingVertical = 'HUG';
+  ctx.bindFill(prefGroupCard, 'light/bg/surface', { r: 1, g: 1, b: 1 });
+  ctx.bindStroke(prefGroupCard, 'light/border/default', { r: 0.898, g: 0.906, b: 0.922 });
+  ctx.bindFloat(prefGroupCard, 'strokeWeight', 'stroke/thin', 1);
+  ctx.bindFloat(prefGroupCard, 'topLeftRadius', 'radius/md', 12);
+  ctx.bindFloat(prefGroupCard, 'topRightRadius', 'radius/md', 12);
+  ctx.bindFloat(prefGroupCard, 'bottomLeftRadius', 'radius/md', 12);
+  ctx.bindFloat(prefGroupCard, 'bottomRightRadius', 'radius/md', 12);
+  await ctx.applyEffectStyle(prefGroupCard, 'Elevation/Card');
+
+  const chevronComp = findIcon('Icon/chevron-right');
+
+  async function appendSettingRow({ name, iconName, title, valueText, badgeText, showChevron, isLast }) {
+    const row = figma.createFrame();
+    row.name = name;
+    row.layoutMode = 'HORIZONTAL';
+    row.primaryAxisSizingMode = 'FIXED';
+    row.counterAxisSizingMode = 'AUTO';
+    row.primaryAxisAlignItems = 'SPACE_BETWEEN';
+    row.counterAxisAlignItems = 'CENTER';
+    row.fills = [];
+    prefGroupCard.appendChild(row);
+    row.layoutSizingHorizontal = 'FILL';
+    row.layoutSizingVertical = 'HUG';
+    ctx.bindFloat(row, 'paddingLeft', 'spacing/lg', 16);
+    ctx.bindFloat(row, 'paddingRight', 'spacing/lg', 16);
+    ctx.bindFloat(row, 'paddingTop', 'spacing/md', 12);
+    ctx.bindFloat(row, 'paddingBottom', 'spacing/md', 12);
+    ctx.bindFloat(row, 'itemSpacing', 'spacing/md', 12);
+
+    const left = figma.createFrame();
+    left.name = 'Left Group';
+    left.layoutMode = 'HORIZONTAL';
+    left.primaryAxisSizingMode = 'AUTO';
+    left.counterAxisSizingMode = 'AUTO';
+    left.counterAxisAlignItems = 'CENTER';
+    left.fills = [];
+    row.appendChild(left);
+    left.layoutSizingHorizontal = 'HUG';
+    left.layoutSizingVertical = 'HUG';
+    ctx.bindFloat(left, 'itemSpacing', 'spacing/md', 12);
+
+    const iconComp = findIcon(iconName);
+    if (iconComp) {
+      const iconInst = iconComp.createInstance();
+      iconInst.name = iconName;
+      left.appendChild(iconInst);
+      ctx.bindFloat(iconInst, 'width', 'size/icon-md', 20);
+      ctx.bindFloat(iconInst, 'height', 'size/icon-md', 20);
+    }
+
+    const rowTitle = figma.createText();
+    rowTitle.name = 'Row Title';
+    rowTitle.fontName = { family: 'Inter', style: 'Regular' };
+    rowTitle.fontSize = 16;
+    rowTitle.characters = title;
+    await ctx.applyTextStyle(rowTitle, 'Body/Large');
+    ctx.bindFill(rowTitle, 'light/text/primary', { r: 0.067, g: 0.094, b: 0.153 });
+    left.appendChild(rowTitle);
+    rowTitle.layoutSizingHorizontal = 'HUG';
+
+    const right = figma.createFrame();
+    right.name = 'Right Group';
+    right.layoutMode = 'HORIZONTAL';
+    right.primaryAxisSizingMode = 'AUTO';
+    right.counterAxisSizingMode = 'AUTO';
+    right.counterAxisAlignItems = 'CENTER';
+    right.fills = [];
+    row.appendChild(right);
+    right.layoutSizingHorizontal = 'HUG';
+    right.layoutSizingVertical = 'HUG';
+    ctx.bindFloat(right, 'itemSpacing', 'spacing/sm', 8);
+
+    if (badgeText) {
+      const badge = figma.createFrame();
+      badge.name = 'Status Badge';
+      badge.layoutMode = 'HORIZONTAL';
+      badge.primaryAxisSizingMode = 'AUTO';
+      badge.counterAxisSizingMode = 'AUTO';
+      badge.primaryAxisAlignItems = 'CENTER';
+      badge.counterAxisAlignItems = 'CENTER';
+      right.appendChild(badge);
+      badge.layoutSizingHorizontal = 'HUG';
+      badge.layoutSizingVertical = 'HUG';
+      ctx.bindFill(badge, 'light/status/success-bg', { r: 0.925, g: 0.992, b: 0.961 });
+      ctx.bindFloat(badge, 'paddingLeft', 'spacing/sm', 8);
+      ctx.bindFloat(badge, 'paddingRight', 'spacing/sm', 8);
+      ctx.bindFloat(badge, 'paddingTop', 'spacing/xs', 4);
+      ctx.bindFloat(badge, 'paddingBottom', 'spacing/xs', 4);
+      ctx.bindFloat(badge, 'topLeftRadius', 'radius/full', 9999);
+      ctx.bindFloat(badge, 'topRightRadius', 'radius/full', 9999);
+      ctx.bindFloat(badge, 'bottomLeftRadius', 'radius/full', 9999);
+      ctx.bindFloat(badge, 'bottomRightRadius', 'radius/full', 9999);
+
+      const badgeLabel = figma.createText();
+      badgeLabel.name = 'Badge Label';
+      badgeLabel.fontName = { family: 'Inter', style: 'Regular' };
+      badgeLabel.fontSize = 12;
+      badgeLabel.characters = badgeText;
+      await ctx.applyTextStyle(badgeLabel, 'Caption/Small');
+      ctx.bindFill(badgeLabel, 'light/status/success', { r: 0.063, g: 0.725, b: 0.506 });
+      badge.appendChild(badgeLabel);
+    } else if (valueText) {
+      const valueNode = figma.createText();
+      valueNode.name = 'Row Value';
+      valueNode.fontName = { family: 'Inter', style: 'Regular' };
+      valueNode.fontSize = 14;
+      valueNode.characters = valueText;
+      await ctx.applyTextStyle(valueNode, 'Body/Medium');
+      ctx.bindFill(valueNode, 'light/text/secondary', { r: 0.294, g: 0.333, b: 0.388 });
+      right.appendChild(valueNode);
+    }
+
+    if (showChevron && chevronComp) {
+      const chevInst = chevronComp.createInstance();
+      chevInst.name = 'Icon/chevron-right';
+      right.appendChild(chevInst);
+      ctx.bindFloat(chevInst, 'width', 'size/icon-sm', 16);
+      ctx.bindFloat(chevInst, 'height', 'size/icon-sm', 16);
+    }
+
+    if (!isLast) {
+      const divider = figma.createFrame();
+      divider.name = 'Divider';
+      divider.resize(329, 1);
+      prefGroupCard.appendChild(divider);
+      divider.layoutSizingHorizontal = 'FILL';
+      divider.layoutSizingVertical = 'FIXED';
+      ctx.bindFill(divider, 'light/border/divider', { r: 0.953, g: 0.957, b: 0.965 });
+      ctx.bindFloat(divider, 'height', 'stroke/thin', 1);
+    }
+  }
+
+  await appendSettingRow({
+    name: 'Notifications Row',
+    iconName: 'Icon/bell',
+    title: 'Push Notifications',
+    badgeText: 'On',
+    showChevron: true,
+    isLast: false
+  });
+  await appendSettingRow({
+    name: 'Appearance Row',
+    iconName: 'Icon/eye',
+    title: 'Appearance',
+    valueText: 'System',
+    showChevron: true,
+    isLast: false
+  });
+  await appendSettingRow({
+    name: 'Version Row',
+    iconName: 'Icon/receipt',
+    title: 'App Version',
+    valueText: 'v1.0.0',
+    showChevron: false,
+    isLast: true
+  });
+
+  // 4. 最下方 LogOut 按鈕（對齊 Main Screen 底部結構）
   const logoutBtn = secondaryBtnVariant.createInstance();
   logoutBtn.name = 'LogOut';
-  mainScreen.appendChild(logoutBtn);
+  settingScreen.appendChild(logoutBtn);
   logoutBtn.layoutSizingHorizontal = 'FILL';
   if (btnLabelPropKey) {
     logoutBtn.setProperties({ [btnLabelPropKey]: 'LogOut' });
@@ -1155,11 +1611,11 @@ const ctx = await createFigmaDesignerContext();
   }
 
   await ctx.cleanupEmptyPage1AndSort();
-  figma.viewport.scrollAndZoomIntoView([mainScreen]);
-  console.log('✅ [Screen: Main] Main Page 建立完成！');
+  figma.viewport.scrollAndZoomIntoView([settingScreen]);
+  console.log('✅ [Screen: Setting] Setting Page 建立完成！');
 }
 
-figma.showUI(__html__, { width: 340, height: 468, themeColors: true });
+figma.showUI(__html__, { width: 340, height: 512, themeColors: true });
 
 figma.ui.onmessage = async (msg) => {
   if (!msg || msg.type !== 'run') return;
@@ -1181,6 +1637,10 @@ figma.ui.onmessage = async (msg) => {
     if (msg.target === "screen:main" || msg.target === 'all') {
       await runScreen_main();
       figma.ui.postMessage({ type: 'log', message: '✅ [Screen] Main built successfully' });
+    }
+    if (msg.target === "screen:setting" || msg.target === 'all') {
+      await runScreen_setting();
+      figma.ui.postMessage({ type: 'log', message: '✅ [Screen] Setting built successfully' });
     }
     const elapsedMs = Date.now() - start;
     figma.notify('🎉 TodoList FigmaDesigner finished (' + elapsedMs + 'ms)');

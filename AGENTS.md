@@ -72,9 +72,10 @@ FigmaDesigner/
 ├── components.js             # Layer 2: 獨立 Components Page (Icons Library 與共用元件組)
 ├── helpers/
 │   └── figma_helpers.js      # 共用工具函式 (字體載入、Token 綁定器、頁面排序與防重複清理)
-├── screens/                  # Layer 3: 一頁一檔，各畫面彼此獨立
-│   ├── login.js              # Login Page
-│   └── main.js               # Main Page
+├── screens/                  # Layer 3: 一畫面一檔，統一建構於 Screens Page
+│   ├── login.js              # Login Screen (x = 0)
+│   ├── main.js               # Main Screen (x = 457)
+│   └── setting.js            # Setting Screen (x = 914)
 ├── assets/icons/*.svg        # 向量圖示原始檔
 └── plugin/                   # ⚠️ 自動生成產物目錄，禁止手動編輯
     ├── code.js
@@ -98,11 +99,12 @@ FigmaDesigner/
 
 1. **只改目標頁面**：修改既有頁面時，僅編輯對應的 `FigmaDesigner/screens/<name>.js`（例如 `login.js`、`main.js`），不可影響其他頁面。
 2. **新增頁面**：
-   - 在 `FigmaDesigner/screens/` 下建立新檔案（例如 `settings.js`），頂層採用標準格式：
+   - 在 `FigmaDesigner/screens/` 下建立新檔案（例如 `setting.js`），頂層採用標準格式（因應 Figma Starter 方案 3 頁上限，所有畫面統一呼叫 `ctx.getOrCreateScreensPage()` 建構於共用 `Screens` Page，並以 `ctx.placeScreenOnCanvas(screensPage, screenFrame, slotIndex)` 橫向等距排列）：
      ```javascript
      (async () => {
        const ctx = await createFigmaDesignerContext();
-       // 建構該頁面內容...
+       const screensPage = await ctx.getOrCreateScreensPage();
+       // 建構該頁面內容並透過 ctx.placeScreenOnCanvas(screensPage, screenFrame, slotIndex) 擺放...
        await ctx.cleanupEmptyPage1AndSort();
      })();
      ```
@@ -133,6 +135,9 @@ FigmaDesigner/
 ### 6.1 設計對齊通用規範
 - **Figma 源頭腳本／MCP 逐行核對紅線（禁止僅憑摘要實作）**：撰寫任何平台 UI 元件（`AppButton`、`AppTextField`、`ToDoCellItem`、`AddTaskSheet`）或頁面（`LoginScreen`、`MainScreen`）前，**必須先直接讀取 [`FigmaDesigner/components.js`](./FigmaDesigner/components.js) 與 [`FigmaDesigner/screens/*.js`](./FigmaDesigner/screens/main.js) 原檔**（若 Figma 畫布曾手動微調，須額外透過 Figma MCP 讀取 `get_design_context` 與 `get_screenshot`），逐項 1:1 映射所有 `paddingTop/Bottom/Left/Right`、`itemSpacing`、`radius`、`stroke`、`TextStyle` 與色票變數，**嚴禁僅憑 [`README.md`](./README.md) 文字摘要推測數值或自行增刪 `Spacer`**。
 - **系統容器與 Modal 修飾符紅線**：使用框架原生負責座標定位與動畫位移的容器（如 Jetpack Compose `ModalBottomSheet`、SwiftUI `.sheet`、Flutter `showModalBottomSheet`）時，**禁止在外層 `modifier` 附加會建立繪圖圖層或干擾對齊的修飾符（如 `Modifier.shadow(...)`），亦禁止在子容器重複塗底色導致圓角被覆蓋為直角**；外框形狀、底色與高度一律由容器原生參數控制（或先查證框架該版本實作順序）。
+- **Bottom Sheet 高度自適應與鍵盤貼合規範（禁止固定比例 Detents 造成鍵盤大面積留白）**：`AddTaskSheet` 等含輸入框之 Bottom Sheet 容器高度必須**依內部表單實際高度自適應（Hug Content）**，彈出系統鍵盤時 Sheet 底部應**剛好貼合鍵盤上緣**向上推移：
+  - **iOS (SwiftUI)**：嚴禁使用 `.presentationDetents([.medium, .large])` 固定螢幕比例高度，亦禁止在表單內容內放入撐滿全高的 `Spacer` 或 `.frame(maxHeight: .infinity)`，否則點擊輸入框喚起鍵盤時 `UISheetPresentationController` 會強制將 Sheet 升級展開至 `.large` 全螢幕高度，使操作按鈕與鍵盤上緣間產生大面積空白；必須動態量測內容實際高度（`.presentationDetents([.height(contentHeight)])`）並採自然高度排版，確保彈出鍵盤時緊湊貼合鍵盤上緣。
+  - **Android / Flutter**：維持 `wrap_content` / 內容自適應高度與 `imePadding` / `viewInsets.bottom` 緊貼鍵盤上緣，不得將表單彈窗撐滿至頂部安全區域。
 - **Modal State Key 與 Identity 穩定性紅線（禁止打字重組重建彈窗）**：嚴禁讓表單輸入狀態的改變直接或間接重置 Modal 容器的 State Key 或 Identity：
   - **Android (Compose)**：傳入 `rememberModalBottomSheetState`（或任何內部採 `rememberSaveable` 的狀態建立器）的 lambda（例如 `confirmValueChange`），**嚴禁直接捕獲會隨打字頻繁變動的 `uiState`**；必須先透過 `rememberUpdatedState` 讀取最新布林旗標並以 `remember { { ... } }` 鎖定 lambda 參考，避免每次輸入字元即重建 `SheetState` 導致彈窗上下跳動。
   - **iOS (SwiftUI)**：`.sheet(item: ...)` 綁定之 `Identifiable` ID 與內容 `.id(...)` 不可隨表單輸入狀態變動而銷毀重建彈窗。

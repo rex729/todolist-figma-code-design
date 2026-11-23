@@ -11,15 +11,15 @@
 
   // 從 Components Page 取得 Icon/google 母體
   const compPage = figma.root.children.find(p => p.name === 'Components');
-  if (!compPage) throw new Error('Components page not found. Please run Components first!');
+  if (!compPage) throw new Error('找不到 Components Page，請先執行 Components！');
   await compPage.loadAsync();
   const googleIconComp = compPage.findOne(n => n.type === 'COMPONENT' && n.name === 'Icon/google');
 
-  // 切換至 Login Page（不存在則自動建立）
-  const loginPage = await ctx.getOrCreatePage('Login', ['登入']);
+  // 切換至共用 Screens Page（Starter 雙頁架構：Screens + Components）
+  const screensPage = await ctx.getOrCreateScreensPage();
 
   // 徹底刪除既有的 Login Screen、重複畫布或空白 Frame
-  for (const child of [...loginPage.children]) {
+  for (const child of [...screensPage.children]) {
     if (
       child.name === 'Login Screen' ||
       child.name === 'Google Login Button' ||
@@ -32,6 +32,7 @@
   const loginScreen = figma.createFrame();
   loginScreen.name = 'Login Screen';
   loginScreen.resize(393, 852);
+  ctx.placeScreenOnCanvas(screensPage, loginScreen, 0);
   loginScreen.layoutMode = 'VERTICAL';
   loginScreen.primaryAxisSizingMode = 'FIXED';
   loginScreen.counterAxisSizingMode = 'FIXED';

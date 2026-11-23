@@ -183,13 +183,13 @@ Instead of wiring complex click-through prototypes in Figma's `Prototype` tab, t
 
 | Dimension | Source of Truth | What It Defines | How AI Agents Consume It |
 | :--- | :--- | :--- | :--- |
-| **1. What it looks like** | 🎨 **Figma Design**<br/>(`TodoList`) | • **Tokens**: `ColorCollection`, `SpacingCollection`, `Text/Effect Styles`<br/>• **Components**: Dedicated `Components` page (`Icons Library` & shared components)<br/>• **Key Screens**: Clean static keyframes (`Login`, `Main`) built strictly with `Frame` + `Auto Layout` | Queries the node tree, Auto Layout rules (`Vertical`/`Horizontal`, `Fixed`/`Hug`/`Fill`), and Code Syntax via **Figma MCP** to generate 1:1 SwiftUI / Jetpack Compose / Flutter UI |
+| **1. What it looks like** | 🎨 **Figma Design**<br/>(`TodoList`) | • **Tokens**: `ColorCollection`, `SpacingCollection`, `Text/Effect Styles`<br/>• **Components**: Dedicated `Components` page (`Icons Library` & shared components)<br/>• **Key Screens**: Clean static keyframes (`Login Screen`, `Main Screen`, `Setting Screen`) consolidated on a single `Screens` page built strictly with `Frame` + `Auto Layout` | Queries the node tree, Auto Layout rules (`Vertical`/`Horizontal`, `Fixed`/`Hug`/`Fill`), and Code Syntax via **Figma MCP** to generate 1:1 SwiftUI / Jetpack Compose / Flutter UI |
 | **2. How it works** | 📄 **Codebase Markdown**<br/>(`SPEC.md` / `DESIGN.md` + `SKILL.md`) | • **User Flow & Navigation**: Transition triggers and navigation stack rules<br/>• **State & Logic**: State machines (`idle`/`loading`/`error`/`authenticated`) and Firestore / Auth integration<br/>• **Architecture**: Platform layering, TDD, and ADRs | Reads local Markdown specs and Agent Skills to generate business logic, state management, and unit tests |
 
 ### 6.2 Three-Step Closed-Loop Workflow
 
 1. **Step 1 — Figma (Minimal Visual Definitions)**:
-   - Maintain clean keyframe screens (`Login`, `Main`) and store reusable parts in a dedicated **`Components`** page (including `Icons Library`, synced from `FigmaDesigner/assets/icons/*.svg`).
+   - Maintain clean keyframe frames (`Login Screen`, `Main Screen`, `Setting Screen`) on a shared **`Screens`** page, and store reusable parts in a dedicated **`Components`** page (including `Icons Library`, synced from `FigmaDesigner/assets/icons/*.svg`).
    - Every container uses **`Frame` + `Auto Layout` (`Shift + A`)** bound to `ColorCollection`, `SpacingCollection`, `Text Styles`, and `Effect Styles`—no `Prototype` noodles needed.
    - All Figma assets (Collections, Styles, Components, Screens) are version-controlled in Git via `FigmaDesigner/*.js`.
 2. **Step 2 — Repository Markdown (States & Flows)**:
@@ -201,11 +201,13 @@ stateDiagram-v2
     LoginScreen --> Authenticating: Tap Google Login Button (isLoading = true)
     Authenticating --> MainScreen: Google Auth Succeeded (Persist Session & Reset Stack)
     Authenticating --> LoginScreen: Auth Failed or Cancelled (Show status/danger Error)
-    MainScreen --> LoginScreen: Tap LogOut (Clear Session)
+    MainScreen --> SettingScreen: Tap TopNavBar Setting Icon
+    SettingScreen --> MainScreen: Navigate Back
+    SettingScreen --> LoginScreen: Tap Bottom LogOut (Clear Session)
 ```
 
 3. **Step 3 — AI Agent Cross-Platform Generation**:
-   - AI agents combine the token mappings in this `README.md`, behavioral specs in [SPEC.md](./SPEC.md) / [DESIGN.md](./DESIGN.md), and live Figma structure for `Login` and `Main` to build iOS (SwiftUI), Android (Jetpack Compose), and Flutter UI, logic, and tests with **zero hardcoded values** and **automatic Light / Dark Mode support**.
+   - AI agents combine the token mappings in this `README.md`, behavioral specs in [SPEC.md](./SPEC.md) / [DESIGN.md](./DESIGN.md), `FigmaDesigner/screens/*.js` sources, and live Figma `Screens` page structure (`Login Screen`, `Main Screen`, `Setting Screen`) to build iOS (SwiftUI), Android (Jetpack Compose), and Flutter UI, logic, and tests with **zero hardcoded values** and **automatic Light / Dark Mode support**.
 
 ---
 
@@ -215,8 +217,8 @@ stateDiagram-v2
 
 ### 7.1 `Components` Page
 
-1. **`Icons Library`**: Houses 20 standard vector icon components mapped 1:1 to `FigmaDesigner/assets/icons/*.svg`:
-   - Auth & general: `Icon/google` (`ic_google.svg`), `Icon/apple` (`ic_apple.svg`), `Icon/mail`, `Icon/lock`, `Icon/eye`, `Icon/eye-off`, `Icon/face-id`, `Icon/trash` (`ic_trash.svg` — swipe-to-delete action icon)
+1. **`Icons Library`**: Houses 21 standard vector icon components mapped 1:1 to `FigmaDesigner/assets/icons/*.svg`:
+   - Auth & general: `Icon/google` (`ic_google.svg`), `Icon/apple` (`ic_apple.svg`), `Icon/mail`, `Icon/lock`, `Icon/eye`, `Icon/eye-off`, `Icon/face-id`, `Icon/setting` (`ic_setting.svg` — top-right settings navigation icon), `Icon/trash` (`ic_trash.svg` — swipe-to-delete action icon)
    *(Note: Button loading spinners do not use static SVGs; all three platforms load Lottie animations from `shared/animations/circle-loader-*.json`.)*
    - Payments & navigation: `Icon/qr-scan`, `Icon/barcode`, `Icon/transfer`, `Icon/top-up`, `Icon/wallet`, `Icon/credit-card`, `Icon/bell`, `Icon/receipt`, `Icon/chevron-right`
    - Todo statuses: `Icon/status-todo` (`ic_status_todo.svg`), `Icon/status-in-progress` (`ic_status_in_progress.svg`), `Icon/status-done` (`ic_status_done.svg`)
@@ -238,24 +240,34 @@ stateDiagram-v2
      - `State=Default`: Fill `light/bg/subtle`, border `light/border/default` + `stroke/thin` (`1px`), text `light/text/muted`
      - `State=Focused`: Fill `light/bg/surface`, border `light/border/focus` + `stroke/thick` (`2px`), text `light/text/primary`
 5. **`❖ AddTaskSheet` Component (New Todo Bottom Sheet)**:
-   - **Container**: `Vertical Auto Layout`, fill `light/bg/elevated`, top corner radius `radius/xl` (`24px`), shadow `Elevation/Modal`, padding `spacing/2xl` (`24px`), item spacing `spacing/lg` (`16px`).
+   - **Container**: `Vertical Auto Layout` (adaptive `Hug Content` height—when the software keyboard opens on mobile, the bottom edge stays flush against the top of the keyboard without expanding to full screen), fill `light/bg/elevated`, top corner radius `radius/xl` (`24px`), shadow `Elevation/Modal`, padding `spacing/2xl` (`24px`), item spacing `spacing/lg` (`16px`).
    - **Nested Instances**:
      - Top `Drag Handle` (`40 × 4`, `radius/full`, `light/border/default`)
      - `Sheet Title` (`"New Todo Item"`, `Heading/H2`, `light/text/primary`)
      - Two `◇ AppTextField` instances (`"Task Title"` and `"Due Date"`)
      - Bottom `Action Row`: Horizontal pair of `◇ AppButton` instances (left `Style=Secondary` `"Cancel"`, right `Style=Primary` `"Add Task"`)
 
-### 7.2 `Login` Page
+### 7.2 `Screens` Page ➔ `Login Screen` (`x = 0`)
 
 - **`Login Screen` (`393 × 852`)**: `Vertical Auto Layout`, centered horizontally and vertically (`CENTER`), fill `light/bg/canvas`, padding `spacing/2xl` (`24px`).
 - **`Google Login Button`**: `Horizontal Auto Layout`, width `FILL`, height `size/control-lg` (`52px`), radius `radius/md` (`12px`), containing `◇ Icon/google` instance and `"Continue with Google"` (`Label/Large`).
 
-### 7.3 `Main` Page
+### 7.3 `Screens` Page ➔ `Main Screen` (`x = 457`)
 
 - **`Main Screen` (`393 × 852`)**: `Vertical Auto Layout`, fill `light/bg/canvas`, horizontal padding `spacing/lg` (`16px`), bottom padding `spacing/3xl` (`32px`).
-- **`TopNavBar`**: `Horizontal Auto Layout (SPACE_BETWEEN)` with `NavTitle` (`"My Todo List"`, `Heading/H1`) on the left and `AddButton` (`"+ Add"`, fill `light/brand/primary`, height `size/control-sm = 36px`) on the right.
+- **`TopNavBar`**: `Horizontal Auto Layout (SPACE_BETWEEN)` with `NavTitle` (`"My Todo List"`, `Heading/H1`) on the left and `NavActions` (gap `spacing/sm = 8px`) on the right, containing `AddButton` (`"+ Add"`, fill `light/brand/primary`, height `size/control-sm = 36px`) followed by `SettingButton` (`36 × 36` `size/control-sm`, radius `radius/sm = 8px`, fill `light/bg/subtle`, border `light/border/default`, embedding `◇ Icon/setting` instance `20 × 20`; pushes to `Setting Screen` via centralized Routing).
 - **`ListView`**: `Vertical Auto Layout` (`FILL` width & height, item spacing `spacing/md = 12px`) containing **`◇ ToDoCellItem` instances** (3 sample items: `Buy groceries` / `Nov 20` `TODO`, `Prepare project slides` / `Nov 22` `IN PROGRESS`, `Book dentist appointment` / `Nov 18` `DONE`). Tapping `+ Add` opens `AddTaskSheet`; tapping the status pill cycles through `TODO ➔ IN PROGRESS ➔ DONE ➔ TODO`.
-- **`LogOut` Button**: Placed at the bottom of `Main Screen` (`◇ AppButton` `Style=Secondary` instance, label `"LogOut"` using `Label/Large` + `light/text/primary`, width `FILL`, bottom margin `spacing/3xl = 32px`), signing the user out and returning to `Login Screen`.
+
+### 7.4 `Screens` Page ➔ `Setting Screen` (`x = 914`)
+
+- **`Setting Screen` (`393 × 852`)**: `Vertical Auto Layout`, fill `light/bg/canvas`, horizontal padding `spacing/lg` (`16px`), bottom padding `spacing/3xl` (`32px`), item spacing `spacing/xl` (`20px`); supports system back gesture / navigation back to `Main Screen`.
+- **`TopNavBar`**: `Horizontal Auto Layout (SPACE_BETWEEN)` with `NavTitle` (`"Settings"`, `Heading/H1`) on the left.
+- **`Profile Card`**: `Horizontal Auto Layout`, fill `light/bg/surface`, border `light/border/default` (`stroke/thin`), radius `radius/md` (`12px`), padding `spacing/lg` (`16px`), shadow `Elevation/Card`, with `Avatar Badge` (`44 × 44`, `radius/full`, `light/brand/secondary` embedding `◇ Icon/google`) on the left, and `"Signed in with Google"` (`Label/Large`) + email (`Body/Medium`) on the right.
+- **`Preferences Section`**: Vertical `FILL` container with section header `"Preferences"` (`Label/Medium`) and `Preferences Card` (`light/bg/surface`, `radius/md`, `Elevation/Card`) containing 3 setting rows separated by `1px` `light/border/divider`:
+  1. `Push Notifications`: `◇ Icon/bell` + status pill (`"On"`, `light/status/success` / `light/status/success-bg`) + `◇ Icon/chevron-right`
+  2. `Appearance`: `◇ Icon/eye` + `"System"` (`Body/Medium`) + `◇ Icon/chevron-right`
+  3. `App Version`: `◇ Icon/receipt` + `"v1.0.0"` (`Caption/Small`, `light/text/muted`)
+- **`LogOut` Button**: Placed at the bottom of `Setting Screen` (`◇ AppButton` `Style=Secondary` instance, label `"LogOut"` using `Label/Large` + `light/text/primary`, width `FILL`, bottom margin `spacing/3xl = 32px`), signing the user out and resetting the navigation stack to `Login Screen`.
 
 ---
 
@@ -281,7 +293,7 @@ Feeding raw Figma screenshots to an AI coding assistant usually breaks down in t
 ```mermaid
 flowchart LR
     F["Layer 1: foundations.js<br/>(42 Colors + 26 Spacing/Size + Text/Effect Styles)"] --> C["Layer 2: components.js<br/>(Icons Library + Variant Component Sets)"]
-    C --> S["Layer 3: screens/*.js<br/>(Independent Login / Main Screens)"]
+    C --> S["Layer 3: screens/*.js<br/>(Login / Main / Setting on Screens Page)"]
     H["helpers/figma_helpers.js<br/>(Token Binders + Idempotent Cleanup + Page Sort)"] --> S
     F & C & S & H --> B["build_plugin.sh"]
     B --> P["plugin/code.js + plugin/ui.html"]
@@ -299,7 +311,8 @@ flowchart LR
    *Figure 1: `Components` page generated automatically by `components.js` (`Icons Library`, `ToDoCellItem`, `AppButton`, `AppTextField`, and `AddTaskSheet`).*
 
 3. **Layer 3 — `screens/*.js` + `helpers/figma_helpers.js` (Idempotent Screen Builders)**
-   - Each screen lives in its own file (`screens/login.js`, `screens/main.js`) and calls `createFigmaDesignerContext()` for shared helpers:
+   - Each screen lives in its own file (`screens/login.js`, `screens/main.js`, `screens/setting.js`) and calls `createFigmaDesignerContext()` for shared helpers:
+     - `ctx.getOrCreateScreensPage()` / `ctx.placeScreenOnCanvas(...)`: Consolidates all key screens onto a single `Screens` page (respecting Figma Starter's 3-page limit) and arranges them horizontally.
      - `ctx.bindFill` / `ctx.bindStroke` / `ctx.bindFloat`: Binds node properties directly to Figma Variables (no hardcoded numbers).
      - `ctx.applyTextStyle` / `ctx.applyEffectStyle`: Applies shared typography and elevation styles.
      - `ctx.cleanupEmptyPage1AndSort()`: Removes leftover empty `Page 1` frames and orders pages cleanly.
@@ -332,26 +345,27 @@ To avoid pasting scripts manually into Figma's Developer Console, [`FigmaDesigne
 
 ### 8.4 Hands-On: Adding a New Screen in 30 Seconds
 
-Drop a new file into `FigmaDesigner/screens/`—for example `settings.js`—using the standard IIFE wrapper:
+Drop a new file into `FigmaDesigner/screens/`—for example `profile.js`—using the standard IIFE wrapper:
 
 ```javascript
 /**
- * Screen: Settings
+ * Screen: Profile
  */
 (async () => {
   const ctx = await createFigmaDesignerContext();
-  const settingsPage = await ctx.getOrCreatePage('Settings', ['Preferences']);
+  const screensPage = await ctx.getOrCreateScreensPage();
 
   // Idempotent cleanup: remove existing frames before redrawing
-  for (const child of [...settingsPage.children]) {
-    if (child.name === 'Settings Screen') {
+  for (const child of [...screensPage.children]) {
+    if (child.name === 'Profile Screen') {
       child.remove();
     }
   }
 
   const screen = figma.createFrame();
-  screen.name = 'Settings Screen';
+  screen.name = 'Profile Screen';
   screen.resize(393, 852);
+  ctx.placeScreenOnCanvas(screensPage, screen, 3);
   screen.layoutMode = 'VERTICAL';
   screen.primaryAxisSizingMode = 'FIXED';
   screen.counterAxisSizingMode = 'FIXED';

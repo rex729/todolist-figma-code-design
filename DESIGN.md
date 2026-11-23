@@ -129,6 +129,13 @@ sequenceDiagram
 >   - **Android (`Android/`)**：維持手機目標裝置，Activity 方向鎖定為支援直向與反向直向（`sensorPortrait`）。
 >   - **Flutter (`Flutter/`)**：於啟動時透過 `SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp, DeviceOrientation.portraitDown])` 鎖定直向與倒立直向，並同步將原生 iOS / Android 宿主專案設定為 Phone Only。
 
+> **跨平台統一 Routing 路由表（`Login` / `Main` / `Setting`）**：
+> | 路由名稱 | 觸發來源與條件 | 導覽動作 (Navigation Action) |
+> | :--- | :--- | :--- |
+> | **`Login`** | 未登入啟動 / 在 `Setting Screen` 點擊 `"LogOut"` | 重置導覽堆疊並切換至 `Login Screen` |
+> | **`Main`** | `Login Screen` Google 登入成功 / 已登入啟動 | 重置導覽堆疊並切換至 `Main Screen` |
+> | **`Setting`** | 點擊 `Main Screen` 右上角（`"+ Add"` 右側）`Setting` 圖示按鈕 | **Push** 推入 `Setting Screen`（保留返回堆疊，支援返回 `Main Screen`） |
+
 ### 5.1 `Flutter/`（僅限 Android & iOS｜GetX 框架 + MVVM + Routing + DTO + Entity + Retrofit）
 > **支援平台限制**：`Flutter/` 專案**僅支援 Android 與 iOS 行動平台**（僅保留 `android/` 與 `ios/`，嚴禁包含或建置 `web/`、`macos/`、`windows/`、`linux/`）。
 
@@ -149,7 +156,7 @@ sequenceDiagram
 - **Routing (`App/Routing/`)**：以獨立 `Router` / `NavigationStack` + Route Enum 集中管理畫面跳轉與登入根視圖切換。
 - **Entity (`Domain/Entities/`) & DTO (`Data/DTOs/`)**：領域模型與網路 / Firestore `Codable` DTO 分離，提供明確映射轉換。
 - **Repository / Service (`Data/Repositories/`, `Data/Network/`)**：封裝 Firebase SDK 與 **`Moya`**（以 `TargetType` 定義端點，搭配 `PluginType` 注入 Firebase ID Token 與日誌紀錄）。
-- **ViewModel (`Presentation/.../*ViewModel.swift`) & View (SwiftUI)**：View 僅綁定 ViewModel 狀態，嚴格隔離資料層；UI 全面對齊 `README.md` iOS Code Syntax。
+- **ViewModel (`Presentation/.../*ViewModel.swift`) & View (SwiftUI)**：View 僅綁定 ViewModel 狀態，嚴格隔離資料層；UI 全面對齊 `README.md` iOS Code Syntax，且 `AddTaskSheet` 採內容高度動態量測之 `.presentationDetents([.height(...)])`（不設 `[.medium, .large]` 與撐滿全高 `Spacer`），確保鍵盤彈出時底部剛好貼合鍵盤上緣。
 
 ### 5.4 共用 Lottie Loading 動畫規範 (`shared/animations/`)
 - Loading Indicator 不使用系統原生 Spinner 或靜態 SVG，三平台統一引入官方 **Lottie** 套件並循環播放 `shared/animations/` 內已預先對齊 Design Tokens 色碼的動畫檔（尺寸 `size/icon-md = 20px`）：

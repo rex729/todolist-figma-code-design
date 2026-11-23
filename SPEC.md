@@ -59,7 +59,7 @@
   - 若登入失敗或使用者取消授權，立即停止 Loading、恢復按鈕可點擊，並於畫面顯示 `status/danger` 錯誤提示。
 
 ### 5.2 主頁面 (`Main` Screen)
-1. **`TopNavBar`**：左側顯示標題 `"My Todo List"`（`Heading/H1`），右側顯示 `"+ Add"` 主按鈕。
+1. **`TopNavBar`**：左側顯示標題 `"My Todo List"`（`Heading/H1`），右側依序配置 `"+ Add"` 主按鈕與 `Setting` 齒輪圖示按鈕（點擊進入 `Setting Screen`）。
 2. **`ListView`**：透過 Cloud Firestore 即時監聽（`snapshots`）垂直條列展示使用者的 `ToDoCellItem` 項目（標題、格式化到期日如 `Nov 20`、右側狀態膠囊按鈕），預設依 **`dueDate` 升冪排序**（最早／最近到期排在最上方）。
 3. **狀態快速推進、編輯與刪除**：
    - 點擊單筆列右側的狀態膠囊按鈕，可依序循環切換 **`TODO` ➔ `IN PROGRESS` ➔ `DONE` ➔ `TODO`**，並即時同步回寫 Cloud Firestore。
@@ -68,10 +68,16 @@
 4. **`AddTaskSheet`（新增／編輯待辦 Bottom Sheet）**：
    - 點擊右上角 `"+ Add"`（新增模式，標題 `"New Todo Item"`、主按鈕 `"Add Task"`、`dueDate` 預設帶入當日）或點擊既有卡片（編輯模式，標題 `"Edit Todo Item"`、主按鈕 `"Save"`、**預先帶入原有 `title` 與 `dueDate`**）喚起 `AddTaskSheet` 彈窗（`Elevated` 底色與 `Elevation/Modal` 陰影）。
    - 包含 `"Task Title"` 與 `"Due Date"`（點擊開啟系統 DatePicker）兩個 `AppTextField`，以及 `"Cancel"`（Secondary）與主按鈕兩個 `AppButton`。
+   - **高度自適應與鍵盤貼合**：彈窗高度依內部表單實際內容自適應（Hug Content）；當點擊 `"Task Title"` 喚起系統鍵盤時，彈窗維持緊湊內容高度並使底部邊緣**剛好貼合鍵盤上緣**，不得展開至全螢幕高度或於按鈕與鍵盤之間出現大面積空白。
    - **送出防連點與關閉**：點擊送出時先驗證標題非空白（失敗則顯示提示且不關閉）；驗證通過後**鎖定主按鈕並於按鈕內顯示 Lottie Loading Indicator（藍底按鈕使用反白版 `shared/animations/circle-loader-on-brand.json`，尺寸 `size/icon-md = 20px`，循環播放）防連點**，待 Firestore 寫入完成（或離線快取排隊完成）後自動關閉。**點擊 `"Cancel"`、背景遮罩或下滑手勢**皆取消本次變更並關閉彈窗（送出寫入期間暫禁遮罩/手勢誤關）。
-5. **登出操作 (`LogOut`)**：
-   - `Main Screen` 最下方配置 `"LogOut"` 按鈕（底部間距 `spacing/3xl` = `32px`）。
-   - 點擊 `"LogOut"` 按鈕立即執行登出（清除 Firebase Auth Session / Google Sign-In 狀態），並透過 Routing 導回 `Login Screen`。
+5. **前往設定頁面 (`Setting`)**：
+   - 點擊 `TopNavBar` 右側（`"+ Add"` 右邊）的 `Setting` 圖示按鈕（`Icon/setting`），透過各平台集中式 Routing 層 Push 導向 `Setting Screen`（保留導覽堆疊，可隨時返回 `Main Screen`）。
+
+### 5.3 設定頁面 (`Setting` Screen)
+1. **`TopNavBar`**：左側顯示標題 `"Settings"`（`Heading/H1`），並支援透過系統返回手勢／導覽返回鍵回到 `Main Screen`。
+2. **`Profile Card`**：顯示目前透過 Google Sign-In 登入的帳戶標題（`"Signed in with Google"`）與信箱資訊。
+3. **`Preferences` 群組卡片**：提供推播通知開關狀態（`Push Notifications`）、外觀模式設定（`Appearance`，支援隨系統切換 `Light / Dark Mode`）與版本資訊（`App Version`）。
+4. **登出操作 (`LogOut`)**：頁面最下方配置 `"LogOut"` 按鈕（底部間距 `spacing/3xl` = `32px`），點擊立即執行登出（清除 Firebase Auth Session / Google Sign-In 狀態），並透過 Routing 導回 `Login Screen`。
 
 ---
 
@@ -107,9 +113,11 @@
   當 使用者將該筆卡片向左滑動並點擊紅色 "Delete" 動作按鈕
   那麼 系統自 Firestore 硬刪除該筆文件並自列表移除
 
-場景 6: 點擊 LogOut 按鈕登出
+場景 6: 由 Main 進入 Setting 並點擊 LogOut 按鈕登出
   假設 使用者目前位於 Main Screen
-  當 使用者點擊最下方的 "LogOut" 按鈕
+  當 使用者點擊右上角 "+ Add" 右側的 Setting 圖示按鈕
+  那麼 App 透過 Routing 導向 Setting Screen
+  當 使用者點擊 Setting Screen 最下方的 "LogOut" 按鈕
   那麼 系統清除 Firebase Auth 與 Google Sign-In 登入狀態
   並且 透過 Routing 重置導覽堆疊導回 Login Screen
 ```
@@ -121,4 +129,5 @@
 2. **無資料空狀態（Empty State）**：新帳號或待辦清單為空時，`Main Screen` 的 `ListView` 區域顯示友善空狀態引導提示（例如「尚未建立待辦事項，點擊右上角 + Add 開始記錄！」），並保留底部的 `"LogOut"` 按鈕可點擊。
 3. **離線與即時同步**：啟用 Cloud Firestore 預設本地離線快取與即時監聽（`snapshots`），離線時可繼續檢視快取並排隊寫入；若遇權限錯誤或異常寫入失敗則顯示錯誤提示（`status/danger`）。
 4. **Light / Dark Mode 切換**：三平台畫面須依據 `README.md` 的語意化 Code Syntax 自動響應系統深淺色模式。
-5. **裝置與方向限制（Phone Only + Portrait / Portrait Upside Down）**：三平台皆限定為手機裝置（Phone Only），且螢幕方向僅支援直向（Portrait）與倒立直向（Portrait Upside Down），不開放橫向旋轉或平板分割視窗（Split View）。
+5. **鍵盤彈出與彈窗貼合**：於 `AddTaskSheet` 點擊輸入框開啟軟鍵盤時，三平台皆須維持緊湊內容高度並讓彈窗底部貼合鍵盤上緣（iOS 不得觸發系統 `.large` 全高展開造成留白）。
+6. **裝置與方向限制（Phone Only + Portrait / Portrait Upside Down）**：三平台皆限定為手機裝置（Phone Only），且螢幕方向僅支援直向（Portrait）與倒立直向（Portrait Upside Down），不開放橫向旋轉或平板分割視窗（Split View）。
