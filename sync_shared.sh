@@ -11,7 +11,7 @@ elif [[ -x "/opt/homebrew/share/flutter/bin/cache/dart-sdk/bin/dart" ]]; then
 elif command -v flutter >/dev/null 2>&1; then
   DART_CMD="flutter dart"
 else
-  echo "[ERROR] 找不到 dart / flutter 指令，無法同步 shared/ 資源。" >&2
+  echo "[ERROR] 找不到 dart 指令，無法同步 shared/ 資源。" >&2
   exit 1
 fi
 

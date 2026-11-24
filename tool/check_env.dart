@@ -3,7 +3,36 @@ import 'dart:io';
 
 import 'toolchain_checker.dart';
 
+TargetPlatform _parsePlatform(List<String> args) {
+  String? raw;
+  for (var i = 0; i < args.length; i++) {
+    final arg = args[i];
+    if (arg == '--platform' && i + 1 < args.length) {
+      raw = args[i + 1];
+      break;
+    }
+    if (arg.startsWith('--platform=')) {
+      raw = arg.substring('--platform='.length);
+      break;
+    }
+  }
+  switch (raw?.toLowerCase()) {
+    case null:
+    case 'all':
+      return TargetPlatform.all;
+    case 'android':
+      return TargetPlatform.android;
+    case 'ios':
+      return TargetPlatform.ios;
+    default:
+      stderr.writeln('\x1B[31m[ERROR] 不支援的 --platform 參數：$raw（僅支援 android / ios / all）\x1B[0m');
+      exit(2);
+  }
+}
+
 Future<void> main(List<String> args) async {
+  final platform = _parsePlatform(args);
+
   // 尋找根目錄的 toolchain.json
   File? configFile;
   for (final path in ['toolchain.json', '../toolchain.json']) {
@@ -23,10 +52,14 @@ Future<void> main(List<String> args) async {
   final spec = ToolchainSpec.fromJson(specJson);
 
   stdout.writeln('====================================================');
-  stdout.writeln('   MCPTest 三平台 Toolchain 跨平台環境預檢報告');
+  stdout.writeln('   TodoList Toolchain 環境預檢報告 (target: ${platform.name})');
   stdout.writeln('====================================================');
 
-  final checker = ToolchainChecker(spec: spec, probe: const SystemEnvironmentProbe());
+  final checker = ToolchainChecker(
+    spec: spec,
+    probe: const SystemEnvironmentProbe(),
+    platform: platform,
+  );
   final report = await checker.checkAll();
 
   for (final item in report.results) {
@@ -42,7 +75,7 @@ Future<void> main(List<String> args) async {
 
   stdout.writeln('----------------------------------------------------');
   if (report.passed) {
-    stdout.writeln('\x1B[32m🎉 環境全數符合規格，可正常進行三平台開發與建置！\x1B[0m');
+    stdout.writeln('\x1B[32m🎉 環境全數符合規格，可正常進行雙平台開發與建置！\x1B[0m');
     stdout.writeln('====================================================');
     exit(0);
   } else {

@@ -6,7 +6,7 @@
  * - `TopNavBar`：左側 `NavTitle` ("Settings")
  * - `Profile Card`：顯示 Google 帳號登入資訊（`◇ Icon/google` + 帳號標題與信箱）
  * - `Preferences Section`：設定群組卡片（Notifications、Appearance、App Version，複用 `Icons Library`）
- * - 底部配置 `LogOut` 按鈕（`◇ AppButton` `Style=Secondary` Instance，文字 `"LogOut"`，底部間距 `spacing/3xl`）
+ * - 底部配置 `BottomActions`：即時時間標籤 (`LiveTimeLabel`, `yyyy-MM-dd HH:mm:ss`, `Caption/Small`, `light/text/muted`) 與下方 `LogOut` 按鈕（間距 `spacing/2xl`，底部間距 `spacing/3xl`）
  */
 (async () => {
   const ctx = await createFigmaDesignerContext();
@@ -34,6 +34,7 @@
       child.name === 'Setting Screen' ||
       child.name === 'Profile Card' ||
       child.name === 'Preferences Section' ||
+      child.name === 'BottomActions' ||
       (child.type === 'FRAME' && child.children.length === 0)
     ) {
       child.remove();
@@ -346,10 +347,33 @@
     isLast: true
   });
 
-  // 4. 最下方 LogOut 按鈕（對齊 Main Screen 底部結構）
+  // 4. 底部操作區 BottomActions：即時時間標籤 + LogOut 按鈕（間距 spacing/2xl = 24px）
+  const bottomActions = figma.createFrame();
+  bottomActions.name = 'BottomActions';
+  bottomActions.layoutMode = 'VERTICAL';
+  bottomActions.primaryAxisSizingMode = 'AUTO';
+  bottomActions.counterAxisSizingMode = 'FIXED';
+  bottomActions.counterAxisAlignItems = 'CENTER';
+  bottomActions.fills = [];
+  settingScreen.appendChild(bottomActions);
+  bottomActions.layoutSizingHorizontal = 'FILL';
+  bottomActions.layoutSizingVertical = 'HUG';
+  ctx.bindFloat(bottomActions, 'itemSpacing', 'spacing/2xl', 24);
+
+  const liveTimeLabel = figma.createText();
+  liveTimeLabel.name = 'LiveTimeLabel';
+  liveTimeLabel.fontName = { family: 'Inter', style: 'Regular' };
+  liveTimeLabel.fontSize = 12;
+  liveTimeLabel.characters = '2026-11-24 14:25:38';
+  liveTimeLabel.textAlignHorizontal = 'CENTER';
+  await ctx.applyTextStyle(liveTimeLabel, 'Caption/Small');
+  ctx.bindFill(liveTimeLabel, 'light/text/muted', { r: 0.612, g: 0.639, b: 0.686 });
+  bottomActions.appendChild(liveTimeLabel);
+  liveTimeLabel.layoutSizingHorizontal = 'FILL';
+
   const logoutBtn = secondaryBtnVariant.createInstance();
   logoutBtn.name = 'LogOut';
-  settingScreen.appendChild(logoutBtn);
+  bottomActions.appendChild(logoutBtn);
   logoutBtn.layoutSizingHorizontal = 'FILL';
   if (btnLabelPropKey) {
     logoutBtn.setProperties({ [btnLabelPropKey]: 'LogOut' });

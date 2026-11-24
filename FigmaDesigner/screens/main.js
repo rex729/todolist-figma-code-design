@@ -4,6 +4,7 @@
  *
  * 負責建構 `Screens` Page 內的 `Main Screen` (393×852)：
  * - `TopNavBar`：左側 `NavTitle` ("My Todo List") + 右側 `NavActions`（`AddButton` `"+ Add"` 與右側 `SettingButton` `◇ Icon/setting`）
+ * - `FilterBar`：水平膠囊篩選列（`ALL` / `TODO` / `IN PROGRESS` / `DONE`，預設選中 `ALL`）
  * - `ListView`：垂直自動佈局，內嵌 3 筆不同狀態 (`TODO` / `IN PROGRESS` / `DONE`) 的 `◇ ToDoCellItem` Instances
  */
 (async () => {
@@ -36,6 +37,7 @@
     if (
       child.name === 'Main Screen' ||
       child.name === 'TopNavBar' ||
+      child.name === 'FilterBar' ||
       child.name === 'ListView' ||
       (child.type === 'FRAME' && child.children.length === 0)
     ) {
@@ -146,6 +148,68 @@
   settingBtn.appendChild(settingIconInst);
   ctx.bindFloat(settingIconInst, 'width', 'size/icon-md', 20);
   ctx.bindFloat(settingIconInst, 'height', 'size/icon-md', 20);
+
+  // 狀態篩選列 FilterBar（ALL / TODO / IN PROGRESS / DONE，預設選中 ALL）
+  const filterBar = figma.createFrame();
+  filterBar.name = 'FilterBar';
+  filterBar.layoutMode = 'HORIZONTAL';
+  filterBar.primaryAxisSizingMode = 'FIXED';
+  filterBar.counterAxisSizingMode = 'AUTO';
+  filterBar.counterAxisAlignItems = 'CENTER';
+  filterBar.fills = [];
+  mainScreen.appendChild(filterBar);
+  filterBar.layoutSizingHorizontal = 'FILL';
+  filterBar.layoutSizingVertical = 'HUG';
+  ctx.bindFloat(filterBar, 'itemSpacing', 'spacing/sm', 8);
+
+  const filterChips = [
+    { label: 'ALL', selected: true },
+    { label: 'TODO', selected: false },
+    { label: 'IN PROGRESS', selected: false },
+    { label: 'DONE', selected: false }
+  ];
+
+  for (const chipCfg of filterChips) {
+    const chip = figma.createFrame();
+    chip.name = `FilterChip/${chipCfg.label}`;
+    chip.layoutMode = 'HORIZONTAL';
+    chip.primaryAxisSizingMode = 'AUTO';
+    chip.counterAxisSizingMode = 'AUTO';
+    chip.primaryAxisAlignItems = 'CENTER';
+    chip.counterAxisAlignItems = 'CENTER';
+    filterBar.appendChild(chip);
+    chip.layoutSizingHorizontal = 'HUG';
+    chip.layoutSizingVertical = 'HUG';
+    ctx.bindFloat(chip, 'paddingLeft', 'spacing/md', 12);
+    ctx.bindFloat(chip, 'paddingRight', 'spacing/md', 12);
+    ctx.bindFloat(chip, 'paddingTop', 'spacing/sm', 8);
+    ctx.bindFloat(chip, 'paddingBottom', 'spacing/sm', 8);
+    ctx.bindFloat(chip, 'topLeftRadius', 'radius/full', 9999);
+    ctx.bindFloat(chip, 'topRightRadius', 'radius/full', 9999);
+    ctx.bindFloat(chip, 'bottomLeftRadius', 'radius/full', 9999);
+    ctx.bindFloat(chip, 'bottomRightRadius', 'radius/full', 9999);
+
+    if (chipCfg.selected) {
+      ctx.bindFill(chip, 'light/brand/primary', { r: 0, g: 0.4, b: 1 });
+    } else {
+      ctx.bindFill(chip, 'light/bg/surface', { r: 1, g: 1, b: 1 });
+      ctx.bindStroke(chip, 'light/border/default', { r: 0.898, g: 0.906, b: 0.922 });
+      ctx.bindFloat(chip, 'strokeWeight', 'stroke/thin', 1);
+    }
+
+    const chipText = figma.createText();
+    chipText.name = 'Label';
+    chipText.fontName = { family: 'Inter', style: 'Medium' };
+    chipText.fontSize = 14;
+    chipText.characters = chipCfg.label;
+    await ctx.applyTextStyle(chipText, 'Label/Medium');
+    if (chipCfg.selected) {
+      ctx.bindFill(chipText, 'light/text/on-brand', { r: 1, g: 1, b: 1 });
+    } else {
+      ctx.bindFill(chipText, 'light/text/secondary', { r: 0.294, g: 0.333, b: 0.388 });
+    }
+    chip.appendChild(chipText);
+  }
 
   // ListView 容器
   const listView = figma.createFrame();

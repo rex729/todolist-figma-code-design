@@ -1,9 +1,9 @@
 # 功能與需求規格書 (SPEC.md)
 
-> **文件狀態**：Accepted / 規格已定案（已完成 `/grill-me-doc` 深度訪談收斂，可作為三平台 TDD 與實作依據）。
+> **文件狀態**：Accepted / 規格已定案（已完成 `/grill-me-doc` 深度訪談收斂，可作為雙平台 TDD 與實作依據）。
 
 ## 1. 專案概述
-本專案（`MCPTest`）為一個整合 **Figma Design-as-Code** 與 **Firebase（Google Sign-In + Cloud Firestore）** 的跨平台行動裝置 TodoList 待辦事項管理系統，預計於 **iOS（SwiftUI）**、**Android（Jetpack Compose）** 與 **Flutter（僅支援 Android 與 iOS 雙行動平台，不支援 Web / macOS / Windows / Linux）** 提供 1:1 對齊同一套設計系統的應用程式體驗。
+本專案（`TodoList`）為一個整合 **Figma Design-as-Code** 與 **Firebase（Google Sign-In + Cloud Firestore）** 的行動裝置 TodoList 待辦事項管理系統，於 **iOS（SwiftUI）** 與 **Android（Jetpack Compose）** 提供 1:1 對齊同一套設計系統的原生應用程式體驗。
 
 ### 1.1 支援裝置與螢幕方向規格
 - **支援裝置（Device Support）**：**僅支援手機（Phone Only）**，不支援平板（iPad / Android Tablet）或桌面裝置。
@@ -13,7 +13,7 @@
 
 ## 2. 領域術語表 (Domain Glossary)
 
-為確保設計端（Figma）、產品規格與 iOS / Android / Flutter 三平台程式碼認知完全一致，專案內統一使用以下領域詞彙：
+為確保設計端（Figma）、產品規格與 iOS / Android 雙平台程式碼認知完全一致，專案內統一使用以下領域詞彙：
 
 | 術語 (Term) | 英文代號 / 識別碼 | 定義與業務語意 | 範例 / 允許值 |
 | :--- | :--- | :--- | :--- |
@@ -60,24 +60,29 @@
 
 ### 5.2 主頁面 (`Main` Screen)
 1. **`TopNavBar`**：左側顯示標題 `"My Todo List"`（`Heading/H1`），右側依序配置 `"+ Add"` 主按鈕與 `Setting` 齒輪圖示按鈕（點擊進入 `Setting Screen`）。
-2. **`ListView`**：透過 Cloud Firestore 即時監聽（`snapshots`）垂直條列展示使用者的 `ToDoCellItem` 項目（標題、格式化到期日如 `Nov 20`、右側狀態膠囊按鈕），預設依 **`dueDate` 升冪排序**（最早／最近到期排在最上方）。
-3. **狀態快速推進、編輯與刪除**：
+2. **`FilterBar`（狀態篩選列）**：
+   - 位於 `TopNavBar` 下方、`ListView` 上方，水平排列 `ALL`、`TODO`、`IN PROGRESS`、`DONE` 四個膠囊選項（預設選中 **`ALL`**；窄螢幕時可支援水平捲動不裁切）。
+   - 點擊任一選項即於前端對即時監聽的待辦資料進行狀態過濾（不額外發起 Firestore 查詢），過濾後仍維持 **`dueDate` 升冪排序**。
+   - 若於非 `ALL` 篩選狀態下推進某筆項目的狀態使其不再符合該篩選條件，應即時自目前篩選列表中更新移出。
+3. **`ListView`**：透過 Cloud Firestore 即時監聽（`snapshots`）垂直條列展示符合當前篩選條件的 `ToDoCellItem` 項目（標題、格式化到期日如 `Nov 20`、右側狀態膠囊按鈕），預設依 **`dueDate` 升冪排序**（最早／最近到期排在最上方）。
+4. **狀態快速推進、編輯與刪除**：
    - 點擊單筆列右側的狀態膠囊按鈕，可依序循環切換 **`TODO` ➔ `IN PROGRESS` ➔ `DONE` ➔ `TODO`**，並即時同步回寫 Cloud Firestore。
    - 點擊卡片本體開啟 `AddTaskSheet` 編輯既有標題與到期日（重用同元件，按鈕改為儲存變更）。
    - 支援卡片向左滑動顯示紅色 `Delete` 動作按鈕（底色 `status/danger` `#EF4444`、內嵌反白着色之 **`Icon/trash` (`ic_trash.svg`)**），**點擊 `Delete` 後**採 **硬刪除（Hard Delete）** 直接自 Cloud Firestore 抹除該筆文件（避免誤滑直接刪除）。
-4. **`AddTaskSheet`（新增／編輯待辦 Bottom Sheet）**：
+5. **`AddTaskSheet`（新增／編輯待辦 Bottom Sheet）**：
    - 點擊右上角 `"+ Add"`（新增模式，標題 `"New Todo Item"`、主按鈕 `"Add Task"`、`dueDate` 預設帶入當日）或點擊既有卡片（編輯模式，標題 `"Edit Todo Item"`、主按鈕 `"Save"`、**預先帶入原有 `title` 與 `dueDate`**）喚起 `AddTaskSheet` 彈窗（`Elevated` 底色與 `Elevation/Modal` 陰影）。
    - 包含 `"Task Title"` 與 `"Due Date"`（點擊開啟系統 DatePicker）兩個 `AppTextField`，以及 `"Cancel"`（Secondary）與主按鈕兩個 `AppButton`。
    - **高度自適應與鍵盤貼合**：彈窗高度依內部表單實際內容自適應（Hug Content）；當點擊 `"Task Title"` 喚起系統鍵盤時，彈窗維持緊湊內容高度並使底部邊緣**剛好貼合鍵盤上緣**，不得展開至全螢幕高度或於按鈕與鍵盤之間出現大面積空白。
    - **送出防連點與關閉**：點擊送出時先驗證標題非空白（失敗則顯示提示且不關閉）；驗證通過後**鎖定主按鈕並於按鈕內顯示 Lottie Loading Indicator（藍底按鈕使用反白版 `shared/animations/circle-loader-on-brand.json`，尺寸 `size/icon-md = 20px`，循環播放）防連點**，待 Firestore 寫入完成（或離線快取排隊完成）後自動關閉。**點擊 `"Cancel"`、背景遮罩或下滑手勢**皆取消本次變更並關閉彈窗（送出寫入期間暫禁遮罩/手勢誤關）。
-5. **前往設定頁面 (`Setting`)**：
+6. **前往設定頁面 (`Setting`)**：
    - 點擊 `TopNavBar` 右側（`"+ Add"` 右邊）的 `Setting` 圖示按鈕（`Icon/setting`），透過各平台集中式 Routing 層 Push 導向 `Setting Screen`（保留導覽堆疊，可隨時返回 `Main Screen`）。
 
 ### 5.3 設定頁面 (`Setting` Screen)
 1. **`TopNavBar`**：左側顯示標題 `"Settings"`（`Heading/H1`），並支援透過系統返回手勢／導覽返回鍵回到 `Main Screen`。
 2. **`Profile Card`**：顯示目前透過 Google Sign-In 登入的帳戶標題（`"Signed in with Google"`）與信箱資訊。
 3. **`Preferences` 群組卡片**：提供推播通知開關狀態（`Push Notifications`）、外觀模式設定（`Appearance`，支援隨系統切換 `Light / Dark Mode`）與版本資訊（`App Version`）。
-4. **登出操作 (`LogOut`)**：頁面最下方配置 `"LogOut"` 按鈕（底部間距 `spacing/3xl` = `32px`），點擊立即執行登出（清除 Firebase Auth Session / Google Sign-In 狀態），並透過 Routing 導回 `Login Screen`。
+4. **即時時間顯示 (`LiveTimeLabel`)**：於 `"LogOut"` 按鈕上方 `spacing/2xl` (`24px`) 處置中顯示即時本地時間（格式 `yyyy-MM-dd HH:mm:ss`，樣式 `Caption/Small` + `text/muted`，每秒自動更新，畫面關閉／離開時釋放計時器）。
+5. **登出操作 (`LogOut`)**：頁面最下方配置 `"LogOut"` 按鈕（底部間距 `spacing/3xl` = `32px`），點擊立即執行登出（清除 Firebase Auth Session / Google Sign-In 狀態），並透過 Routing 導回 `Login Screen`。
 
 ---
 
@@ -120,14 +125,30 @@
   當 使用者點擊 Setting Screen 最下方的 "LogOut" 按鈕
   那麼 系統清除 Firebase Auth 與 Google Sign-In 登入狀態
   並且 透過 Routing 重置導覽堆疊導回 Login Screen
+
+場景 7: 在 Main Screen 使用 FilterBar 篩選待辦狀態
+  假設 Main Screen 目前共有狀態為 TODO、IN PROGRESS 與 DONE 的待辦事項，且 FilterBar 預設選中 "ALL"
+  當 使用者點擊 FilterBar 上的 "TODO" 膠囊
+  那麼 ListView 僅顯示狀態為 TODO 的項目，且依 dueDate 升冪排序
+  當 使用者將該筆 TODO 項目的狀態切換為 IN PROGRESS
+  那麼 該筆項目同步回寫 Firestore 並即時自 "TODO" 篩選列表中移出
+  當 使用者點擊 "ALL" 膠囊
+  那麼 ListView 恢復顯示全部狀態的待辦項目
+
+場景 8: Setting Screen 顯示每秒更新的即時時間標籤
+  假設 使用者由 Main Screen 進入 Setting Screen
+  那麼 在 "LogOut" 按鈕上方 24px (spacing/2xl) 處應置中顯示格式為 "yyyy-MM-dd HH:mm:ss" 的即時時間
+  並且 隨時間推進每秒更新顯示字串，離開 Setting Screen 時停止計時器
 ```
 
 ---
 
 ## 7. 邊界條件與例外處理 (Edge Cases)
 1. **登入失敗或使用者取消授權**：停止載入狀態並顯示錯誤提示（`status/danger`），維持在 `Login` 畫面不崩潰。
-2. **無資料空狀態（Empty State）**：新帳號或待辦清單為空時，`Main Screen` 的 `ListView` 區域顯示友善空狀態引導提示（例如「尚未建立待辦事項，點擊右上角 + Add 開始記錄！」），並保留底部的 `"LogOut"` 按鈕可點擊。
+2. **無資料／篩選結果為空狀態（Empty State）**：
+   - 當使用者總待辦清單為空時，`ListView` 區域顯示友善空狀態引導提示（例如 `"No todo items yet. Tap + Add in the top right to start!"`），並保留 `FilterBar` 與右上角 `+ Add` / `Setting` 入口可用。
+   - 當總待辦清單非空、但切換至特定狀態（如 `DONE`）後無符合項目時，`ListView` 顯示該篩選狀態為空的提示（例如 `"No todo items in DONE."`），可隨時切回 `ALL`。
 3. **離線與即時同步**：啟用 Cloud Firestore 預設本地離線快取與即時監聽（`snapshots`），離線時可繼續檢視快取並排隊寫入；若遇權限錯誤或異常寫入失敗則顯示錯誤提示（`status/danger`）。
-4. **Light / Dark Mode 切換**：三平台畫面須依據 `README.md` 的語意化 Code Syntax 自動響應系統深淺色模式。
-5. **鍵盤彈出與彈窗貼合**：於 `AddTaskSheet` 點擊輸入框開啟軟鍵盤時，三平台皆須維持緊湊內容高度並讓彈窗底部貼合鍵盤上緣（iOS 不得觸發系統 `.large` 全高展開造成留白）。
-6. **裝置與方向限制（Phone Only + Portrait / Portrait Upside Down）**：三平台皆限定為手機裝置（Phone Only），且螢幕方向僅支援直向（Portrait）與倒立直向（Portrait Upside Down），不開放橫向旋轉或平板分割視窗（Split View）。
+4. **Light / Dark Mode 切換**：雙平台畫面須依據 `README.md` 的語意化 Code Syntax 自動響應系統深淺色模式。
+5. **鍵盤彈出與彈窗貼合**：於 `AddTaskSheet` 點擊輸入框開啟軟鍵盤時，雙平台皆須維持緊湊內容高度並讓彈窗底部貼合鍵盤上緣（iOS 不得觸發系統 `.large` 全高展開造成留白）。
+6. **裝置與方向限制（Phone Only + Portrait / Portrait Upside Down）**：雙平台皆限定為手機裝置（Phone Only），且螢幕方向僅支援直向（Portrait）與倒立直向（Portrait Upside Down），不開放橫向旋轉或平板分割視窗（Split View）。

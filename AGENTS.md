@@ -11,9 +11,12 @@
 - **[README.md](./README.md)**：Figma Design System 唯一真理來源，記錄完整 Design Tokens（`ColorCollection`、`SpacingCollection`、`Text Styles`、`Effect Styles`）、AI 雙核心工作流、App 狀態流轉圖，以及 Figma 各頁面與元件規格。
 - **[SPEC.md](./SPEC.md)**：功能與需求規格書，記錄產品需求、**領域術語表 (Glossary)**、使用者流程、BDD 驗收標準（AC）與邊界條件。
 - **[DESIGN.md](./DESIGN.md)**：系統架構與技術設計書，記錄三平台直連 Firebase Auth + Cloud Firestore 架構、資料模型、共用憑證設定與**架構決策記錄 (ADRs)**。
-- **`FigmaDesigner/`**：本專案之 Figma **Design-as-Code** 設計源頭與官方本機外掛所在目錄。
-- **`shared/firebase/`**：Android / iOS / Flutter 三平台共用的 Firebase 設定檔唯一真理來源（`google-services.json`、`GoogleService-Info.plist`）。
-- **[toolchain.json](./toolchain.json)**：跨平台（iOS / Android / Flutter）開發與建置工具版本唯一真理來源。
+- **`FigmaDesigner/`**：本專案之 Figma **Design-as-Code** 設計源頭與官方本機外掛（名稱 `TodoList FigmaDesigner`，定義於 `FigmaDesigner/manifest.json`）所在目錄。
+- **`shared/firebase/`**：Android / iOS 雙平台共用的 Firebase 設定檔唯一真理來源（`google-services.json`、`GoogleService-Info.plist`）。
+- **[toolchain.json](./toolchain.json)**：雙平台（iOS / Android）開發與建置工具版本唯一真理來源。
+- **平台專責開發指引（`docs/` 範本，可依需求貼入實作分支的 `.agents/skills/`）**：
+  - **iOS Agent**：參閱 [`docs/IOS_IMPLEMENTER.md`](./docs/IOS_IMPLEMENTER.md)
+  - **Android Agent**：參閱 [`docs/ANDROID_IMPLEMENTER.md`](./docs/ANDROID_IMPLEMENTER.md)
 
 ---
 
@@ -21,16 +24,16 @@
 
 ### 2.1 環境與 Toolchain 預檢 (`check_env`)
 
-1. **實作前無條件優先執行預檢**：在執行任何三平台（`iOS/`、`Android/`、`Flutter/`）專案初始化、建置、測試或撰寫應用程式碼前，**必須優先執行根目錄環境預檢腳本**：
+1. **實作前無條件優先執行預檢**：在執行任何雙平台（`iOS/`、`Android/`）專案初始化、建置、測試或撰寫應用程式碼前，**必須優先執行根目錄環境預檢腳本**：
    - **macOS / Linux / CI 環境**：`./check_env.sh`
    - **Windows 環境**：`check_env.bat`
 2. **前置阻斷原則**：環境預檢腳本將依據 [`toolchain.json`](./toolchain.json) 進行嚴格比對。若預檢未通過（Exit Code 1），嚴禁進行任何後續平台初始化、建置或開發，必須先依腳本輸出之修復指引排除環境問題，確認全數通過（Exit Code 0）後方可繼續。
-3. **Figma / 純規格檔例外**：僅編輯 `FigmaDesigner/` 設計稿腳本或進行 `SPEC.md` / `DESIGN.md` 純文字規劃時不需阻斷，但一旦切換至三平台開發流程，一律先跑 `check_env`。
+3. **Figma / 純規格檔例外**：僅編輯 `FigmaDesigner/` 設計稿腳本或進行 `SPEC.md` / `DESIGN.md` 純文字規劃時不需阻斷，但一旦切換至雙平台開發流程，一律先跑 `check_env`。
 
 ### 2.2 Firebase 與 Cloud Firestore 自動化前置設定（雙重前置阻斷關卡）
 
 1. **開工前無條件強制執行（禁止沿用他分支或先前紀錄）**：
-   - 每當**切換／建立新開發分支**，或開始**任一單一平台**（`iOS/`、`Android/`、`Flutter/`）專案初始化、撰寫業務程式碼、建置或實機驗收前，**必須在當下緊接 `./check_env.sh` 之後重新執行 `./setup_firebase.sh`**：
+   - 每當**切換／建立新開發分支**，或開始**任一單一平台**（`iOS/`、`Android/`）專案初始化、撰寫業務程式碼、建置或實機驗收前，**必須在當下緊接 `./check_env.sh` 之後重新執行 `./setup_firebase.sh`**：
      ```bash
      ./check_env.sh && ./setup_firebase.sh
      ```
@@ -42,7 +45,7 @@
      1. 驗證 `firebase.json`、`.firebaserc`、[`firestore.rules`](./firestore.rules) 與 `firestore.indexes.json` 存在，並檢查 Firebase CLI 登入狀態。
      2. 檢查專案的 **`(default)`** Cloud Firestore 資料庫（Standard Edition）；**若尚未建立則自動執行 `firebase firestore:databases:create "(default)" --edition=standard --location=asia-east1` 建立**。
      3. 自動執行 `firebase deploy --only firestore`，將 [`firestore.rules`](./firestore.rules) 與 `firestore.indexes.json` 編譯並發佈至雲端（避免 Production mode 預設拒絕讀寫造成 `[cloud_firestore/permission-denied]`）。
-     4. 自動呼叫 `./sync_shared.sh`，將 [`shared/firebase/`](./shared/firebase) 與共用資源同步至 `Android/`、`iOS/`、`Flutter/`。
+     4. 自動呼叫 `./sync_shared.sh`，將 [`shared/firebase/`](./shared/firebase) 與共用資源同步至 `Android/` 與 `iOS/`。
 4. **Firebase Authentication（Google Sign-In）前置確認**：
    - 若尚未取得 OAuth Client ID，仍須於 Firebase Console 啟用 **Google** 登入提供者並登錄 Android App（`{packageName}`）之 **SHA-1 / SHA-256** 指紋，將最新 [`google-services.json`](./shared/firebase/google-services.json)（含 `oauth_client`）與 [`GoogleService-Info.plist`](./shared/firebase/GoogleService-Info.plist)（含 `CLIENT_ID` / `REVERSED_CLIENT_ID`）更新至 `shared/firebase/` 後再次執行 `./sync_shared.sh`。
 5. **安全規則要求**：
@@ -56,7 +59,7 @@
 
 1. **先查後問（Explore Before Asking）**：能從專案現有檔案（`README.md`、`SPEC.md`、`DESIGN.md`、`shared/firebase/`、`FigmaDesigner/`）得知的事實，請自行查閱，切勿重複詢問使用者。
 2. **走訪決策樹與逐題推進**：依架構相依性拆解決策樹，每次聚焦詢問一個核心問題（支援選擇題工具時優先使用），並附帶推薦答案（標註 `(Recommended)`）與簡短理由。
-3. **達成共識前禁止寫實作程式碼（No Code Until Consensus）**：在關鍵架構分支、資料模型、Firebase 規則與邊界條件達成完全共識前，嚴禁盲目開始撰寫 `iOS/`、`Android/`、`Flutter/` 實作程式碼。
+3. **達成共識前禁止寫實作程式碼（No Code Until Consensus）**：在關鍵架構分支、資料模型、Firebase 規則與邊界條件達成完全共識前，嚴禁盲目開始撰寫 `iOS/`、`Android/` 實作程式碼。
 4. **自動文檔化同步**：每當訪談達成階段性共識時，主動建立或更新 [SPEC.md](./SPEC.md)、[DESIGN.md](./DESIGN.md)、領域術語表與 ADR。
 5. **全繁體中文**：所有說明、文件與程式碼註解皆以**繁體中文（台灣習慣用語）**撰寫。
 
@@ -130,52 +133,49 @@ FigmaDesigner/
 
 ---
 
-## 6. 跨平台 App UI 與架構規範 (`iOS/` / `Android/` / `Flutter/`)
+## 6. 雙平台 App UI 與架構規範 (`iOS/` / `Android/`)
 
 ### 6.1 設計對齊通用規範
 - **Figma 源頭腳本／MCP 逐行核對紅線（禁止僅憑摘要實作）**：撰寫任何平台 UI 元件（`AppButton`、`AppTextField`、`ToDoCellItem`、`AddTaskSheet`）或頁面（`LoginScreen`、`MainScreen`）前，**必須先直接讀取 [`FigmaDesigner/components.js`](./FigmaDesigner/components.js) 與 [`FigmaDesigner/screens/*.js`](./FigmaDesigner/screens/main.js) 原檔**（若 Figma 畫布曾手動微調，須額外透過 Figma MCP 讀取 `get_design_context` 與 `get_screenshot`），逐項 1:1 映射所有 `paddingTop/Bottom/Left/Right`、`itemSpacing`、`radius`、`stroke`、`TextStyle` 與色票變數，**嚴禁僅憑 [`README.md`](./README.md) 文字摘要推測數值或自行增刪 `Spacer`**。
-- **系統容器與 Modal 修飾符紅線**：使用框架原生負責座標定位與動畫位移的容器（如 Jetpack Compose `ModalBottomSheet`、SwiftUI `.sheet`、Flutter `showModalBottomSheet`）時，**禁止在外層 `modifier` 附加會建立繪圖圖層或干擾對齊的修飾符（如 `Modifier.shadow(...)`），亦禁止在子容器重複塗底色導致圓角被覆蓋為直角**；外框形狀、底色與高度一律由容器原生參數控制（或先查證框架該版本實作順序）。
+- **系統容器與 Modal 修飾符紅線**：使用框架原生負責座標定位與動畫位移的容器（如 Jetpack Compose `ModalBottomSheet`、SwiftUI `.sheet`）時，**禁止在外層 `modifier` 附加會建立繪圖圖層或干擾對齊的修飾符（如 `Modifier.shadow(...)`），亦禁止在子容器重複塗底色導致圓角被覆蓋為直角**；外框形狀、底色與高度一律由容器原生參數控制（或先查證框架該版本實作順序）。
 - **Bottom Sheet 高度自適應與鍵盤貼合規範（禁止固定比例 Detents 造成鍵盤大面積留白）**：`AddTaskSheet` 等含輸入框之 Bottom Sheet 容器高度必須**依內部表單實際高度自適應（Hug Content）**，彈出系統鍵盤時 Sheet 底部應**剛好貼合鍵盤上緣**向上推移：
   - **iOS (SwiftUI)**：嚴禁使用 `.presentationDetents([.medium, .large])` 固定螢幕比例高度，亦禁止在表單內容內放入撐滿全高的 `Spacer` 或 `.frame(maxHeight: .infinity)`，否則點擊輸入框喚起鍵盤時 `UISheetPresentationController` 會強制將 Sheet 升級展開至 `.large` 全螢幕高度，使操作按鈕與鍵盤上緣間產生大面積空白；必須動態量測內容實際高度（`.presentationDetents([.height(contentHeight)])`）並採自然高度排版，確保彈出鍵盤時緊湊貼合鍵盤上緣。
-  - **Android / Flutter**：維持 `wrap_content` / 內容自適應高度與 `imePadding` / `viewInsets.bottom` 緊貼鍵盤上緣，不得將表單彈窗撐滿至頂部安全區域。
+  - **Android (Compose)**：維持 `wrap_content` / 內容自適應高度與 `imePadding` 緊貼鍵盤上緣，不得將表單彈窗撐滿至頂部安全區域。
 - **Modal State Key 與 Identity 穩定性紅線（禁止打字重組重建彈窗）**：嚴禁讓表單輸入狀態的改變直接或間接重置 Modal 容器的 State Key 或 Identity：
   - **Android (Compose)**：傳入 `rememberModalBottomSheetState`（或任何內部採 `rememberSaveable` 的狀態建立器）的 lambda（例如 `confirmValueChange`），**嚴禁直接捕獲會隨打字頻繁變動的 `uiState`**；必須先透過 `rememberUpdatedState` 讀取最新布林旗標並以 `remember { { ... } }` 鎖定 lambda 參考，避免每次輸入字元即重建 `SheetState` 導致彈窗上下跳動。
   - **iOS (SwiftUI)**：`.sheet(item: ...)` 綁定之 `Identifiable` ID 與內容 `.id(...)` 不可隨表單輸入狀態變動而銷毀重建彈窗。
-  - **Flutter**：`showModalBottomSheet` 內表單控制器與狀態須與外部高頻重建隔離，禁止輸入更新時置換 Modal `Key` 或重推路由。
 - **Android Google Sign-In (`Credential Manager`) 選項**：實作 Android Google 登入時須採用 `GetSignInWithGoogleOption`（而非僅依賴既有快取帳號的 `GetGoogleIdOption`），避免未預存帳號之模擬器或新裝置直接觸發 `NoCredentialException`。
 - **裝置與螢幕方向強制規範（Phone Only｜Portrait & Portrait Upside Down）**：
-  - **僅支援手機（Phone Only）**：三平台皆僅針對手機裝置建置與設計，不支援平板（iPad / Android Tablet）。iOS 專案須將 `TARGETED_DEVICE_FAMILY` 設為 `"1"`（僅 iPhone，禁止含 `"2"`），以免在未支援全部四方向時觸發 `All interface orientations must be supported unless the app requires full screen.` 警告。
-  - **僅支援直向與倒立直向（Portrait & Portrait Upside Down）**：iOS `Info.plist` `UISupportedInterfaceOrientations` 僅設定 `UIInterfaceOrientationPortrait` 與 `UIInterfaceOrientationPortraitUpsideDown`；Android 設定 `sensorPortrait`；Flutter 設定 `SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp, DeviceOrientation.portraitDown])`。
+  - **僅支援手機（Phone Only）**：雙平台皆僅針對手機裝置建置與設計，不支援平板（iPad / Android Tablet）。iOS 專案須將 `TARGETED_DEVICE_FAMILY` 設為 `"1"`（僅 iPhone，禁止含 `"2"`），以免在未支援全部四方向時觸發 `All interface orientations must be supported unless the app requires full screen.` 警告。
+  - **僅支援直向與倒立直向（Portrait & Portrait Upside Down）**：iOS `Info.plist` `UISupportedInterfaceOrientations` 僅設定 `UIInterfaceOrientationPortrait` 與 `UIInterfaceOrientationPortraitUpsideDown`；Android 設定 `sensorPortrait`。
 - **Safe Area 與 WindowInsets 邊界規範**：
-  - **四邊全滿版底色延伸（含動態島／挖孔周圍）**：頁面與 Modal 背景底色（`bg/canvas`、`bg/elevated`）須鋪在最外層並延伸至螢幕四邊邊緣，完整填滿狀態列、動態島、螢幕挖孔周圍與底部手勢區（iOS SwiftUI 最外層背景須使用全邊緣 `.ignoresSafeArea()`，禁止僅寫 `.vertical`；Android 須啟用 `enableEdgeToEdge()` 且將底色設於 `safeDrawingPadding()` 外層；Flutter 須將底色設於 `SafeArea` 外層如 `Scaffold.backgroundColor`）。
-  - **前景內容避讓安全區域**：標題、列表與底部操作按鈕（如 `LogOut`、`AddTaskSheet` 操作列）須套用系統安全區域避讓（SwiftUI `Safe Area`、Compose `WindowInsets` / `safeDrawingPadding`、Flutter `SafeArea`），避免遭狀態列、動態島或底部 Home Indicator／導覽列遮擋。
+  - **四邊全滿版底色延伸（含動態島／挖孔周圍）**：頁面與 Modal 背景底色（`bg/canvas`、`bg/elevated`）須鋪在最外層並延伸至螢幕四邊邊緣，完整填滿狀態列、動態島、螢幕挖孔周圍與底部手勢區（iOS SwiftUI 最外層背景須使用全邊緣 `.ignoresSafeArea()`，禁止僅寫 `.vertical`；Android 須啟用 `enableEdgeToEdge()` 且將底色設於 `safeDrawingPadding()` 外層）。
+  - **前景內容避讓安全區域**：標題、列表與底部操作按鈕（如 `LogOut`、`AddTaskSheet` 操作列）須套用系統安全區域避讓（SwiftUI `Safe Area`、Compose `WindowInsets` / `safeDrawingPadding`），避免遭狀態列、動態島或底部 Home Indicator／導覽列遮擋。
   - **避免與 Figma 靜態頂部留白雙重疊加**：[`FigmaDesigner/screens/main.js`](./FigmaDesigner/screens/main.js) 的 `paddingTop = spacing/4xl (48)` 係供靜態畫布模擬頂部安全區域空間；實機已套用系統頂部 Safe Area / WindowInsets 時，不得再直接疊加完整 `48` 導致頂部過度留白。
 - **Design Token 1:1 映射**：UI 層實作必須依據 [README.md](./README.md) 的 Code Syntax 命名（例如 `Color.bgSurface` / `colorBgSurface`、`Spacing.lg` / `spacingLg`）與 Figma Auto Layout 結構進行 1:1 映射。
-- **零寫死原則**：禁止在 View / Composable / Widget 中硬編碼色碼或數值，並須自動支援 Light / Dark Mode 切換。
-- **向量圖示與動畫來源**：所有靜態平台圖示需對齊 `FigmaDesigner/assets/icons/*.svg`；Loading 動畫統一使用 `shared/animations/circle-loader-*.json` 並依各自平台引入 Lottie（`lottie-ios` / `lottie-compose` / `lottie`）。
+- **零寫死原則**：禁止在 View / Composable 中硬編碼色碼或數值，並須自動支援 Light / Dark Mode 切換。
+- **向量圖示與動畫來源**：所有靜態平台圖示需對齊 `FigmaDesigner/assets/icons/*.svg`；Loading 動畫統一使用 `shared/animations/circle-loader-*.json` 並依各自平台引入 Lottie（`lottie-ios` / `lottie-compose`）。
 
-### 6.2 REST API 管理層強制選型（三平台統一規範）
-當應用程式需要管理或串接 RESTful HTTP API（或未來擴充後端 / 外部 API 服務）時，三平台必須統一採用以下網路層套件，並透過 Interceptor / Plugin 自動注入 Firebase Auth ID Token（`Authorization: Bearer <ID_TOKEN>`）：
+### 6.2 REST API 管理層強制選型（雙平台統一規範）
+當應用程式需要管理或串接 RESTful HTTP API（或未來擴充後端 / 外部 API 服務）時，雙平台必須統一採用以下網路層套件，並透過 Interceptor / Plugin 自動注入 Firebase Auth ID Token（`Authorization: Bearer <ID_TOKEN>`）：
 - **Android (`Android/`)**：**Retrofit**（`Retrofit` + `OkHttp` + Auth Interceptor）
-- **Flutter (`Flutter/`)**：**Retrofit**（`dio` + `retrofit` + `json_annotation` + Auth Interceptor）
 - **iOS (`iOS/`)**：**Moya**（以 `TargetType` 管理端點 + `PluginType` 注入驗證標頭）
 
 ### 6.3 統一分層架構強制規範（MVVM + Routing + DTO + Entity）
-三平台（`Flutter/`、`Android/`、`iOS/`）必須嚴格遵守 **MVVM + Routing + DTO + Entity (+ Repository / Service)** 分層規範（完整目錄結構與資料流請對齊 [`DESIGN.md` 第 5 節](./DESIGN.md#5-各平台架構規範摘要統一採-mvvm--routing--dto--entity)）：
-- **Flutter 支援平台限制**：`Flutter/` **僅支援 Android 與 iOS**（專案內僅可保留 `android/` 與 `ios/`，禁止建立或執行 `web/`、`macos/`、`windows/`、`linux/`）。
-1. **Routing**：頁面跳轉與認證態導向集中於獨立 Routing 層（Flutter 採 GetX `AppPages`/`AppRoutes`、Android 採 Compose Navigation、iOS 採 Router/`NavigationStack`），禁止在 View 內硬編碼導覽邏輯。
+雙平台（`Android/`、`iOS/`）必須嚴格遵守 **MVVM + Routing + DTO + Entity (+ Repository / Service)** 分層規範（完整目錄結構與資料流請對齊 [`DESIGN.md` 第 5 節](./DESIGN.md#5-各平台架構規範摘要統一採-mvvm--routing--dto--entity)）：
+1. **Routing**：頁面跳轉與認證態導向集中於獨立 Routing 層（Android 採 Compose Navigation、iOS 採 Router/`NavigationStack`），禁止在 View 內硬編碼導覽邏輯。
 2. **Entity & DTO**：**Entity** 僅保留純領域屬性與業務邏輯，嚴禁耦合 JSON / Firebase SDK / 框架；**DTO** 專責序列化並提供 `toEntity()` / `fromEntity()`。
-3. **Repository / Service**：封裝 Firebase Auth、Cloud Firestore 與網路 API（Android / Flutter 用 **Retrofit**、iOS 用 **Moya**）。
-4. **ViewModel & View**：**Flutter 使用 `GetX` 框架**（`GetxController` 擔任 ViewModel、`GetView<T>` + `Obx` 擔任 View），iOS 與 Android 使用各自 MVVM ViewModel；View 層維持純 UI 宣告，禁止直接存取 SDK 或夾帶業務邏輯，確保各層皆可透過 TDD 注入測試替身。
+3. **Repository / Service**：封裝 Firebase Auth、Cloud Firestore 與網路 API（Android 用 **Retrofit**、iOS 用 **Moya**）。
+4. **ViewModel & View**：iOS 與 Android 使用各自 MVVM ViewModel；View 層維持純 UI 宣告，禁止直接存取 SDK 或夾帶業務邏輯，確保各層皆可透過 TDD 注入測試替身。
 
 ---
 
 ## 7. 原生應用識別碼與共用資源 (`shared/`) 同步強制規範
 
-所有 AI 代理在處理跨平台前端建置、原生配置、動畫資源或初始化時，必須遵循以下唯一真理來源（位於 `shared/`）：
+所有 AI 代理在處理雙平台前端建置、原生配置、動畫資源或初始化時，必須遵循以下唯一真理來源（位於 `shared/`）：
 1. **唯一真理來源 (SSOT)**：
-   - **Android / Flutter(Android)**：以 [shared/firebase/google-services.json](./shared/firebase/google-services.json) 中的 `package_name`（目前為 `{packageName}`）為真理來源。
-   - **iOS / Flutter(iOS)**：以 [shared/firebase/GoogleService-Info.plist](./shared/firebase/GoogleService-Info.plist) 中的 `BUNDLE_ID`（目前為 `{bundleId}`）為真理來源。
+   - **Android**：以 [shared/firebase/google-services.json](./shared/firebase/google-services.json) 中的 `package_name`（目前為 `{packageName}`）為真理來源。
+   - **iOS**：以 [shared/firebase/GoogleService-Info.plist](./shared/firebase/GoogleService-Info.plist) 中的 `BUNDLE_ID`（目前為 `{bundleId}`）為真理來源。
    - **Lottie 動畫資產**：以 `shared/animations/circle-loader-*.json` 為唯一真理來源。
 2. **對齊原則**：
    - 原生層（`build.gradle.kts`、`MainActivity.kt`、`project.pbxproj`、`Info.plist` 等）必須完全無條件對齊此真理來源，嚴禁自行宣告相異之 ID。
@@ -188,5 +188,5 @@ FigmaDesigner/
 ## 8. 業務程式碼零 Mock 強制規範 (No Mocks in Production Code)
 
 所有 AI 代理在撰寫業務邏輯時，必須嚴格遵守「真實實作」原則：
-1. **禁止非測試代碼包含假資料**：正式應用程式原始碼目錄（如 `Flutter/lib/`、`iOS/`、`Android/` 的正式目標）內嚴禁硬編碼任何偽造憑證（如 `demo_token`）、假身分或 Mock 資料。所有 Mock / Fake 僅允許出現在測試目錄（如 `test/`）。
+1. **禁止非測試代碼包含假資料**：正式應用程式原始碼目錄（如 `iOS/`、`Android/` 的正式目標）內嚴禁硬編碼任何偽造憑證（如 `demo_token`）、假身分或 Mock 資料。所有 Mock / Fake 僅允許出現在測試目錄（如 `test/` / `*Tests/`）。
 2. **外部相依阻斷報告原則**：若開發過程中因缺乏第三方雲端憑證（如 Firebase / Google OAuth Client ID）或原生環境受限而無法驗證真實流程時，**嚴禁自行撰寫 Mock 假裝串通**；代理人必須立即停止並向使用者回報具體阻斷原因，請求提供金鑰或引導真實設定。

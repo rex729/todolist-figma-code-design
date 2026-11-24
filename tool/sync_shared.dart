@@ -46,16 +46,8 @@ Future<void> main(List<String> args) async {
     'Android/app/google-services.json',
   );
   await copyFileIfTargetParentExists(
-    'shared/firebase/google-services.json',
-    'Flutter/android/app/google-services.json',
-  );
-  await copyFileIfTargetParentExists(
     'shared/firebase/GoogleService-Info.plist',
     'iOS/MCPTest/Resources/GoogleService-Info.plist',
-  );
-  await copyFileIfTargetParentExists(
-    'shared/firebase/GoogleService-Info.plist',
-    'Flutter/ios/Runner/GoogleService-Info.plist',
   );
 
   // 2. 同步 Lottie 動畫資產 (shared/animations/*.json)
@@ -71,12 +63,6 @@ Future<void> main(List<String> args) async {
     'iOS/MCPTest/Resources/Animations',
     ext: '.json',
   );
-  await copyDirIfPlatformExists(
-    'Flutter/lib',
-    'shared/animations',
-    'Flutter/assets/animations',
-    ext: '.json',
-  );
 
   // 3. 同步 SVG 向量圖示 (FigmaDesigner/assets/icons/*.svg)
   await copyDirIfPlatformExists(
@@ -89,12 +75,6 @@ Future<void> main(List<String> args) async {
     'iOS/MCPTest',
     'FigmaDesigner/assets/icons',
     'iOS/MCPTest/Resources/Icons',
-    ext: '.svg',
-  );
-  await copyDirIfPlatformExists(
-    'Flutter/lib',
-    'FigmaDesigner/assets/icons',
-    'Flutter/assets/icons',
     ext: '.svg',
   );
 

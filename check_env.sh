@@ -13,8 +13,8 @@ elif [[ -x "/opt/homebrew/share/flutter/bin/cache/dart-sdk/bin/dart" ]]; then
 elif command -v flutter >/dev/null 2>&1; then
   DART_CMD="flutter dart"
 else
-  echo -e "\033[31m[ERROR] 系統未安裝或未將 Flutter / Dart SDK 加入 PATH！\033[0m"
-  echo -e "\033[33m請先依據 toolchain.json 安裝 Flutter >= 3.41.0 (推薦 3.41.9)\033[0m"
+  echo -e "\033[31m[ERROR] 系統未安裝或未將 Dart SDK 加入 PATH（check_env CLI 執行所需）！\033[0m"
+  echo -e "\033[33m請先確認系統可執行 dart 指令\033[0m"
   exit 1
 fi
 

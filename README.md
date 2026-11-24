@@ -4,9 +4,9 @@
 
 > **Documentation**: Product Specs [`SPEC.md`](./SPEC.md) | Architecture & Toolchain [`DESIGN.md`](./DESIGN.md) | AI Agent Guidelines [`AGENTS.md`](./AGENTS.md)
 
-This repository demonstrates how to combine **Figma Design-as-Code (via a local Figma Plugin)** with **Dual-Core Specifications (Figma for Visuals + Markdown for Behavior)** so that your entire design system lives in Git and enables AI Agents (with Figma MCP) to generate 1:1 cross-platform UI (iOS SwiftUI, Android Jetpack Compose, Flutter) with zero hardcoded values.
+This repository demonstrates how to combine **Figma Design-as-Code (via a local Figma Plugin)** with **Dual-Core Specifications (Figma for Visuals + Markdown for Behavior)** so that your entire design system lives in Git and enables AI Agents (with Figma MCP) to generate 1:1 native mobile UI (iOS SwiftUI, Android Jetpack Compose) with zero hardcoded values.
 
-- **Figma File Link**: [TodoList Figma Design](https://www.figma.com/design/{figmaFileKey}/MCPTest)
+- **Figma File Link**: [TodoList Figma Design](https://www.figma.com/design/{figmaFileKey}/TodoList)
 - **File Key**: `{figmaFileKey}`
 - **Full Tutorial (English / Medium-Ready)**: Jump to [Section 8: Hands-On Tutorial](#8-hands-on-tutorial-building-an-ai-ready-figma-design-system-with-design-as-code) for a step-by-step walkthrough.
 
@@ -27,7 +27,7 @@ This repository demonstrates how to combine **Figma Design-as-Code (via a local 
    - Open an empty Figma Design file and go to `Plugins` ➔ `Development` ➔ `Import plugin from manifest...`, then select [`FigmaDesigner/manifest.json`](./FigmaDesigner/manifest.json).
    - Run **TodoList FigmaDesigner** and click **`🚀 Rebuild All`** (`Foundations ➔ Components ➔ Screens`) to generate the entire design system and screens in seconds.
 3. **Configure `{option}` Placeholders (Optional for App Implementation)**:
-   - All project-specific identifiers and credentials in this template are replaced with `{option}` placeholders (e.g., `{firebaseProjectId}`, `{packageName}`, `{bundleId}`, `{figmaFileKey}`). Replace them with your own values, then run `./check_env.sh && ./setup_firebase.sh` before starting native/Flutter development.
+   - All project-specific identifiers and credentials in this template are replaced with `{option}` placeholders (e.g., `{firebaseProjectId}`, `{packageName}`, `{bundleId}`, `{figmaFileKey}`). Replace them with your own values, then run `./check_env.sh && ./setup_firebase.sh` before starting native iOS / Android development.
 
 ---
 
@@ -80,7 +80,7 @@ Following Figma's modern conventions (such as Simple Design System), design foun
 | | `light/status/danger` | `#EF4444` | `dark/status/danger` | `#F87171` | `TEXT_FILL`, `SHAPE_FILL`, `FRAME_FILL`, `STROKE_COLOR` | Error alerts, validation failures, destructive actions | `var(--color-status-danger)`<br/>`Color.statusDanger`<br/>`colorStatusDanger` |
 | | `light/status/danger-bg` | `#FEF2F2` | `dark/status/danger-bg` | `#7F1D1D` | `FRAME_FILL`, `SHAPE_FILL` | Error / alert banner background | `var(--color-status-danger-bg)`<br/>`Color.statusDangerBg`<br/>`colorStatusDangerBg` |
 
-### 2.2 Automatic Light / Dark Switching Across Mobile Platforms (iOS / Android / Flutter)
+### 2.2 Automatic Light / Dark Switching Across Mobile Platforms (iOS / Android)
 
 In mobile UI code, Views always reference a **single semantic token name** (such as `Color.bgCanvas` on iOS or `colorBgCanvas` on Android) without writing `if (isDark)` branches:
 
@@ -186,7 +186,7 @@ Instead of wiring complex click-through prototypes in Figma's `Prototype` tab, t
 
 | Dimension | Source of Truth | What It Defines | How AI Agents Consume It |
 | :--- | :--- | :--- | :--- |
-| **1. What it looks like** | 🎨 **Figma Design**<br/>(`TodoList`) | • **Tokens**: `ColorCollection`, `SpacingCollection`, `Text/Effect Styles`<br/>• **Components**: Dedicated `Components` page (`Icons Library` & shared components)<br/>• **Key Screens**: Clean static keyframes (`Login Screen`, `Main Screen`, `Setting Screen`) consolidated on a single `Screens` page built strictly with `Frame` + `Auto Layout` | Queries the node tree, Auto Layout rules (`Vertical`/`Horizontal`, `Fixed`/`Hug`/`Fill`), and Code Syntax via **Figma MCP** to generate 1:1 SwiftUI / Jetpack Compose / Flutter UI |
+| **1. What it looks like** | 🎨 **Figma Design**<br/>(`TodoList`) | • **Tokens**: `ColorCollection`, `SpacingCollection`, `Text/Effect Styles`<br/>• **Components**: Dedicated `Components` page (`Icons Library` & shared components)<br/>• **Key Screens**: Clean static keyframes (`Login Screen`, `Main Screen`, `Setting Screen`) consolidated on a single `Screens` page built strictly with `Frame` + `Auto Layout` | Queries the node tree, Auto Layout rules (`Vertical`/`Horizontal`, `Fixed`/`Hug`/`Fill`), and Code Syntax via **Figma MCP** to generate 1:1 SwiftUI / Jetpack Compose UI |
 | **2. How it works** | 📄 **Codebase Markdown**<br/>(`SPEC.md` / `DESIGN.md` + `SKILL.md`) | • **User Flow & Navigation**: Transition triggers and navigation stack rules<br/>• **State & Logic**: State machines (`idle`/`loading`/`error`/`authenticated`) and Firestore / Auth integration<br/>• **Architecture**: Platform layering, TDD, and ADRs | Reads local Markdown specs and Agent Skills to generate business logic, state management, and unit tests |
 
 ### 6.2 Three-Step Closed-Loop Workflow
@@ -210,19 +210,19 @@ stateDiagram-v2
 ```
 
 3. **Step 3 — AI Agent Cross-Platform Generation**:
-   - AI agents combine the token mappings in this `README.md`, behavioral specs in [SPEC.md](./SPEC.md) / [DESIGN.md](./DESIGN.md), `FigmaDesigner/screens/*.js` sources, and live Figma `Screens` page structure (`Login Screen`, `Main Screen`, `Setting Screen`) to build iOS (SwiftUI), Android (Jetpack Compose), and Flutter UI, logic, and tests with **zero hardcoded values** and **automatic Light / Dark Mode support**.
+   - AI agents combine the token mappings in this `README.md`, behavioral specs in [SPEC.md](./SPEC.md) / [DESIGN.md](./DESIGN.md), `FigmaDesigner/screens/*.js` sources, and live Figma `Screens` page structure (`Login Screen`, `Main Screen`, `Setting Screen`) to build iOS (SwiftUI) and Android (Jetpack Compose) UI, logic, and tests with **zero hardcoded values** and **automatic Light / Dark Mode support**.
 
 ---
 
 ## 7. Figma Pages & Reusable Components (`Pages & Components`)
 
-> **Page Consolidation & Device Baseline**: To stay within Figma Starter's 3-page limit, the file uses **2 Figma Pages**: a dedicated `Components` page and a single **`Screens`** page containing **3 side-by-side `393 × 852` frames** (`Login Screen`, `Main Screen`, `Setting Screen`). This design system targets **Phone Only** in **Portrait / Portrait Upside Down**—`393 × 852` is only a reference frame size for the static Figma canvas, and all three mobile apps must adapt fluidly to any portrait phone screen via Auto Layout without locking fixed screen dimensions.
+> **Page Consolidation & Device Baseline**: To stay within Figma Starter's 3-page limit, the file uses **2 Figma Pages**: a dedicated `Components` page and a single **`Screens`** page containing **3 side-by-side `393 × 852` frames** (`Login Screen`, `Main Screen`, `Setting Screen`). This design system targets **Phone Only** in **Portrait / Portrait Upside Down**—`393 × 852` is only a reference frame size for the static Figma canvas, and both native mobile apps must adapt fluidly to any portrait phone screen via Auto Layout without locking fixed screen dimensions.
 
 ### 7.1 `Components` Page
 
 1. **`Icons Library`**: Houses 21 standard vector icon components mapped 1:1 to `FigmaDesigner/assets/icons/*.svg`:
    - Auth & general: `Icon/google` (`ic_google.svg`), `Icon/apple` (`ic_apple.svg`), `Icon/mail`, `Icon/lock`, `Icon/eye`, `Icon/eye-off`, `Icon/face-id`, `Icon/setting` (`ic_setting.svg` — top-right settings navigation icon), `Icon/trash` (`ic_trash.svg` — swipe-to-delete action icon)
-   *(Note: Button loading spinners do not use static SVGs; all three platforms load Lottie animations from `shared/animations/circle-loader-*.json`.)*
+   *(Note: Button loading spinners do not use static SVGs; both platforms load Lottie animations from `shared/animations/circle-loader-*.json`.)*
    - Payments & navigation: `Icon/qr-scan`, `Icon/barcode`, `Icon/transfer`, `Icon/top-up`, `Icon/wallet`, `Icon/credit-card`, `Icon/bell`, `Icon/receipt`, `Icon/chevron-right`
    - Todo statuses: `Icon/status-todo` (`ic_status_todo.svg`), `Icon/status-in-progress` (`ic_status_in_progress.svg`), `Icon/status-done` (`ic_status_done.svg`)
 2. **`❖ ToDoCellItem` Component Set (Single-Row List Item)**:
@@ -259,6 +259,7 @@ stateDiagram-v2
 
 - **`Main Screen` (`393 × 852`)**: `Vertical Auto Layout`, fill `light/bg/canvas`, horizontal padding `spacing/lg` (`16px`), bottom padding `spacing/3xl` (`32px`).
 - **`TopNavBar`**: `Horizontal Auto Layout (SPACE_BETWEEN)` with `NavTitle` (`"My Todo List"`, `Heading/H1`) on the left and `NavActions` (gap `spacing/sm = 8px`) on the right, containing `AddButton` (`"+ Add"`, fill `light/brand/primary`, height `size/control-sm = 36px`) followed by `SettingButton` (`36 × 36` `size/control-sm`, radius `radius/sm = 8px`, fill `light/bg/subtle`, border `light/border/default`, embedding `◇ Icon/setting` instance `20 × 20`; pushes to `Setting Screen` via centralized Routing).
+- **`FilterBar`**: `Horizontal Auto Layout` (`FILL` width, `HUG` height, gap `spacing/sm = 8px`) directly below `TopNavBar`, containing 4 status filter pills (`ALL` active with `light/brand/primary` fill + `light/text/on-brand` text, and `TODO` / `IN PROGRESS` / `DONE` inactive with `light/bg/subtle` fill + `light/text/secondary` text + `light/border/default` stroke; radius `radius/full`, `Caption/Small`).
 - **`ListView`**: `Vertical Auto Layout` (`FILL` width & height, item spacing `spacing/md = 12px`) containing **`◇ ToDoCellItem` instances** (3 sample items: `Buy groceries` / `Nov 20` `TODO`, `Prepare project slides` / `Nov 22` `IN PROGRESS`, `Book dentist appointment` / `Nov 18` `DONE`). Tapping `+ Add` opens `AddTaskSheet`; tapping the status pill cycles through `TODO ➔ IN PROGRESS ➔ DONE ➔ TODO`.
 
 ### 7.4 `Screens` Page ➔ `Setting Screen` (`x = 914`)
@@ -270,7 +271,9 @@ stateDiagram-v2
   1. `Push Notifications`: `◇ Icon/bell` + status pill (`"On"`, `light/status/success` / `light/status/success-bg`) + `◇ Icon/chevron-right`
   2. `Appearance`: `◇ Icon/eye` + `"System"` (`Body/Medium`) + `◇ Icon/chevron-right`
   3. `App Version`: `◇ Icon/receipt` + `"v1.0.0"` (`Caption/Small`, `light/text/muted`)
-- **`LogOut` Button**: Placed at the bottom of `Setting Screen` (`◇ AppButton` `Style=Secondary` instance, label `"LogOut"` using `Label/Large` + `light/text/primary`, width `FILL`, bottom margin `spacing/3xl = 32px`), signing the user out and resetting the navigation stack to `Login Screen`.
+- **`BottomActions` (`LiveTimeLabel` + `LogOut` Button)**:
+  - **`LiveTimeLabel`**: Centered `spacing/2xl` (`24px`) above the `LogOut` button, displaying live local time in `yyyy-MM-dd HH:mm:ss` format (`Caption/Small`, `light/text/muted`), updated every second while the screen is visible.
+  - **`LogOut` Button**: Placed at the bottom of `Setting Screen` (`◇ AppButton` `Style=Secondary` instance, label `"LogOut"` using `Label/Large` + `light/text/primary`, width `FILL`, bottom margin `spacing/3xl = 32px`), signing the user out and resetting the navigation stack to `Login Screen`.
 
 ---
 
